@@ -15,7 +15,7 @@ class LabeledNode(Node):
 
 
 class RootPart(LabeledNode):
-    element_type = 'root'
+    element_type = 'root_part'
 
 class Part(LabeledNode):
     element_type = "part"
@@ -79,25 +79,27 @@ class HasAttrType(Relationship):
     label = "has_attr_type"
 
 
-config = Config('http://localhost:8182/graphs/hwdbgraph')
-g = Graph(config)
+g = None
+def init_graph():
+    config = Config('http://localhost:8182/graphs/hwdbgraph')
+    g = Graph(config)
+    g.add_proxy("root_parts", RootPart)
+    g.add_proxy("parts", Part)
+    g.add_proxy("standards", Standard)
+    g.add_proxy("connections", Connection)
+    g.add_proxy("attr_types", AttrType)
+    g.add_proxy("companies", Company)
+    g.add_proxy("units", Unit)
 
-g.add_proxy("root_parts", RootPart)
-g.add_proxy("parts", Part)
-g.add_proxy("standards", Standard)
-g.add_proxy("connections", Connection)
-g.add_proxy("attr_types", AttrType)
-g.add_proxy("companies", Company)
-g.add_proxy("units", Unit)
-
-g.add_proxy("is_a", IsA)
-g.add_proxy("has_connection", HasConnection)
-g.add_proxy("has_part", HasPart)
-g.add_proxy("belongs_to", BelongsTo)
-g.add_proxy("implements", Implements)
-g.add_proxy("produces", Produces)
-g.add_proxy("is_unit", IsUnit)
-g.add_proxy("has_attr_type", HasAttrType)
+    g.add_proxy("is_a", IsA)
+    g.add_proxy("has_connection", HasConnection)
+    g.add_proxy("has_part", HasPart)
+    g.add_proxy("belongs_to", BelongsTo)
+    g.add_proxy("implements", Implements)
+    g.add_proxy("produces", Produces)
+    g.add_proxy("is_unit", IsUnit)
+    g.add_proxy("has_attr_type", HasAttrType)
+    return g
 
 
 def load_units():
@@ -187,10 +189,12 @@ def reset_db(args):
             print 'Abort'
             return
 
+    global g
+    g = init_graph()
     g.clear()
+    g = init_graph()
     root_part = g.root_parts.create()
 
-    init_graph()
     load_units()
     load_attr_types()
     load_parts()
