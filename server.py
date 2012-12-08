@@ -8,29 +8,34 @@ from flaskext.htmlbuilder import html as H
 from flask_debugtoolbar import DebugToolbarExtension
 
 
-class RootPart(Node):
+class LabeledNode(Node):
+    def __unicode__(self):
+        return "<%s: %r>" % (self.__class__.__name__, self.label)
+
+
+class RootPart(LabeledNode):
     element_type = 'root'
     
-class Part(Node):
+class Part(LabeledNode):
     element_type = "part"
     label = String(nullable=False)
 
 class Connection(Node):
     element_type = "part_connection"
     
-class Standard(Node):
+class Standard(LabeledNode):
     element_type = "standard"
     label = String(nullable=False)
 
-class AttrType(Node):
+class AttrType(LabeledNode):
     element_type = "attr_type"
     label = String(nullable=False)
 
-class Company(Node):
+class Company(LabeledNode):
     element_type = "company"
     label = String(nullable=False)
     
-class Unit(Node):
+class Unit(LabeledNode):
     element_type = "unit"
     name = String(nullable=False)
     label = String(nullable=False)
