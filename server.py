@@ -16,14 +16,14 @@ class LabeledNode(Node):
 
 class RootPart(LabeledNode):
     element_type = 'root'
-    
+
 class Part(LabeledNode):
     element_type = "part"
     label = String(nullable=False)
 
 class Connection(Node):
     element_type = "part_connection"
-    
+
 class Standard(LabeledNode):
     element_type = "standard"
     label = String(nullable=False)
@@ -35,7 +35,7 @@ class AttrType(LabeledNode):
 class Company(LabeledNode):
     element_type = "company"
     label = String(nullable=False)
-    
+
 class Unit(LabeledNode):
     element_type = "unit"
     name = String(nullable=False)
@@ -53,11 +53,11 @@ class IsA(Relationship):
 class HasConnection(Relationship):
     """ Part => Connection """
     label = "has_connection"
-    
+
 class HasPart(Relationship):
     """ Connection => Part """
     label = "has_part"
-    
+
 class BelongsTo(Relationship):
     """ Connection => Part """
     label = "belongs_to"
@@ -69,16 +69,16 @@ class Implements(Relationship):
 class Produces(Relationship):
     """ Company => Part """
     label = "produces"
-    
+
 class IsUnit(Relationship):
     """ Company => Part """
     label = "is_unit"
-    
+
 class HasAttrType(Relationship):
     """ Part => AttrType """
     label = "has_attr_type"
-    
-    
+
+
 config = Config('http://localhost:8182/graphs/hwdbgraph')
 g = Graph(config)
 
@@ -106,8 +106,9 @@ def load_units():
         name = unit.pop('name')
         unit['name'] = unit['label']
         unit['label'] = name
-        
+
         g.units.create(**unit)
+
 
 def load_attr_types():
     attr_types = json.load(open('attr_types.json'))['attr_types']
@@ -118,29 +119,29 @@ def load_attr_types():
         attr_type_obj = g.attr_types.create(**attr_type)
         g.is_unit.create(attr_type_obj, unit)
 
+
 def load_parts():
     def _add_child(part_dict, parent_part):
         assert 'attr_types' not in part_dict
         part = g.parts.create(label=part_dict['name'])
         g.is_a.create(part, parent_part)
-        
+
         for child_part_dict in part_dict.get('children', []):
             _add_child(child_part_dict, part)
-            
-        
+
     parts = json.load(open('parts.json'))['parts']
-    
+
     for part_dict in parts:
         part = g.parts.create(label=part_dict['name'])
         g.is_a.create(part, g.root_parts.get_all().next())
-        
+
         for attr_type_name in part_dict.get('attr_types', []):
             (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
             g.has_attr_type.create(part, attr_type)
-            
+
         for child_part_dict in part_dict.get('children', []):
             _add_child(child_part_dict, part)
-    
+
 
 base_template = '''
 <body>
@@ -159,11 +160,11 @@ def units_view():
     unit_html = []
     for unit in g.units.get_all():
         unit_html.append(H.li(unit.name, ' [%s]'%unit.label))
-        
+
     doc = H.div(H.h1('Units'), H.ul(unit_html))
     return render_template_string(base_template, content=doc)
-    
-    
+
+
 @app.route('/parts')
 def parts_view():
     def _get_part_li(parent_part):
@@ -176,7 +177,7 @@ def parts_view():
         return H.ul(parts_html)
     doc = _get_part_li(g.root_parts.get_all().next())
     return render_template_string(base_template, content=doc)
-    
+
 
 
 def reset_db(args):
