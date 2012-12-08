@@ -1,3 +1,4 @@
+import argparse
 import json
 
 from bulbs.rexster import Graph, Config
@@ -78,9 +79,9 @@ class HasAttrType(Relationship):
     label = "has_attr_type"
     
     
-config = Config('http://localhost:8182/graphs/tinkergraph')
+config = Config('http://localhost:8182/graphs/hwdbgraph')
 g = Graph(config)
-g.clear()
+
 g.add_proxy("root_parts", RootPart)
 g.add_proxy("parts", Part)
 g.add_proxy("standards", Standard)
@@ -97,9 +98,6 @@ g.add_proxy("implements", Implements)
 g.add_proxy("produces", Produces)
 g.add_proxy("is_unit", IsUnit)
 g.add_proxy("has_attr_type", HasAttrType)
-
-root_part = g.root_parts.create()
-
 
 
 def load_units():
@@ -134,7 +132,7 @@ def load_parts():
     
     for part_dict in parts:
         part = g.parts.create(label=part_dict['name'])
-        g.is_a.create(part, root_part)
+        g.is_a.create(part, g.root_parts.get_all().next())
         
         for attr_type_name in part_dict.get('attr_types', []):
             (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
@@ -143,7 +141,6 @@ def load_parts():
         for child_part_dict in part_dict.get('children', []):
             _add_child(child_part_dict, part)
     
-
 
 base_template = '''
 <body>
@@ -177,21 +174,51 @@ def parts_view():
                 part = edge.outV()
                 parts_html.append(H.li(part.label, _get_part_li(part)))
         return H.ul(parts_html)
-    doc = _get_part_li(root_part)
+    doc = _get_part_li(g.root_parts.get_all().next())
     return render_template_string(base_template, content=doc)
     
 
-load_units()
-load_attr_types()
-load_parts()
-outf = open('export.graphml', 'w')
-outf.write(g.get_graphml())
-print 'Finished inserting'
 
-app.debug = True
-app.secret_key = 'Todo'
+def reset_db(args):
+    if not args.force:
+        answer = raw_input('Really import data (y,N)? ')
+        if answer != 'y':
+            print 'Abort'
+            return
 
-if True:
-    toolbar = DebugToolbarExtension(app)
-print 'Start webserver'
-app.run(port=6040)
+    g.clear()
+    root_part = g.root_parts.create()
+
+    init_graph()
+    load_units()
+    load_attr_types()
+    load_parts()
+    print 'Finished importing'
+
+
+def export_xml(args):
+    outf = open('export.graphml', 'w')
+    outf.write(g.get_graphml())
+
+
+def run_ui(args):
+    app.debug = True
+    app.secret_key = 'Todo'
+    if True:
+        toolbar = DebugToolbarExtension(app)
+    app.run(port=5001)
+
+
+COMMANDS = {
+    'ui': run_ui,
+    'reset_db': reset_db,
+}
+
+
+parser = argparse.ArgumentParser(description='Process some integers.')
+parser.add_argument('command', choices=COMMANDS.keys(), help='Run one of the commands')
+parser.add_argument('--force', action="store_true", help='Force yes on user input for the given command')
+
+args = parser.parse_args()
+
+COMMANDS[args.command](args)
