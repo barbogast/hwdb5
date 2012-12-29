@@ -209,6 +209,9 @@ def export_xml(args):
 
 
 def run_ui(args):
+    global g
+    g = init_graph()
+
     app.debug = True
     app.secret_key = 'Todo'
     if True:
