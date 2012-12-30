@@ -10,8 +10,11 @@ from flask import Flask, render_template_string
 from flaskext.htmlbuilder import html as H
 from flask_debugtoolbar import DebugToolbarExtension
 
+import treetools
 
 class LabeledNode(Node):
+    note = String(nullable=True)
+
     def __unicode__(self):
         return "<%s: %r>" % (self.__class__.__name__, self.label)
 
@@ -21,6 +24,10 @@ class RootPart(LabeledNode):
 
 class Part(LabeledNode):
     element_type = "part"
+    label = String(nullable=False)
+
+class Connector(LabeledNode):
+    element_type = "connector"
     label = String(nullable=False)
 
 class Connection(Node):
@@ -43,7 +50,10 @@ class Unit(LabeledNode):
     name = String(nullable=False)
     label = String(nullable=False)
     format = String(nullable=False)
-    note = String(nullable=True)
+
+class Attribute(Node):
+    element_type = "attribute"
+    value = String(nullable=False)
 
 
 class IsA(Relationship):
@@ -77,8 +87,13 @@ class IsUnit(Relationship):
     label = "is_unit"
 
 class HasAttrType(Relationship):
-    """ Part => AttrType """
+    """ Part => AttrType
+        Attribute => AttrType """
     label = "has_attr_type"
+
+class HasAttribute(Relationship):
+    """ Part => Attribute """
+    label = "has_attribute"
 
 
 g = None
@@ -92,6 +107,8 @@ def init_graph():
     g.add_proxy("attr_types", AttrType)
     g.add_proxy("companies", Company)
     g.add_proxy("units", Unit)
+    g.add_proxy("attributes", Attribute)
+    g.add_proxy("connectors", Connector)
 
     g.add_proxy("is_a", IsA)
     g.add_proxy("has_connection", HasConnection)
@@ -101,50 +118,105 @@ def init_graph():
     g.add_proxy("produces", Produces)
     g.add_proxy("is_unit", IsUnit)
     g.add_proxy("has_attr_type", HasAttrType)
+    g.add_proxy("has_attribute", HasAttribute)
     return g
 
 
 def load_units():
-    units = json.load(open('units.json'))['units']
-    for unit in units:
-        name = unit.pop('name')
-        unit['name'] = unit['label']
-        unit['label'] = name
-
-        g.units.create(**unit)
+    import data
+    for unit in data.units:
+        d = {
+            'name': unit.pop('label'),
+            'label': unit.pop('name'),
+            'format': unit.pop('format', '%(unit)s'),
+            'note': unit.pop('note', None),
+        }
+        assert not unit
+        g.units.create(**d)
 
 
 def load_attr_types():
-    attr_types = json.load(open('attr_types.json'))['attr_types']
-
-    for attr_type in attr_types:
+    import data
+    for attr_type in data.attr_types:
         (unit,) = list(g.units.index.lookup(label=attr_type.pop('unit')))
         attr_type['label'] = attr_type.pop('name')
         attr_type_obj = g.attr_types.create(**attr_type)
         g.is_unit.create(attr_type_obj, unit)
 
 
-def load_parts():
-    def _add_child(part_dict, parent_part):
-        assert 'attr_types' not in part_dict
-        part = g.parts.create(label=part_dict['name'])
-        g.is_a.create(part, parent_part)
-
-        for child_part_dict in part_dict.get('children', []):
-            _add_child(child_part_dict, part)
-
-    parts = json.load(open('parts.json'))['parts']
+def load_root_parts():
+    import data
+    parts = treetools.inflate_tree(data.parts)
 
     for part_dict in parts:
-        part = g.parts.create(label=part_dict['name'])
+        d = {
+            'label': part_dict.pop('<name>'),
+            'note': part_dict.pop('<note>', None),
+        }
+
+        part = g.parts.create(**d)
         g.is_a.create(part, g.root_parts.get_all().next())
 
-        for attr_type_name in part_dict.get('attr_types', []):
+        for attr_type_name in part_dict.pop('<attr_types>', []):
             (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
             g.has_attr_type.create(part, attr_type)
 
-        for child_part_dict in part_dict.get('children', []):
-            _add_child(child_part_dict, part)
+        assert not part_dict
+
+
+def _add_element(el_dict, parent_el, element_type):
+    assert 'attr_types' not in el_dict, 'attr_types should be on the first level elements of the part tree (or should they?)'
+    d = {
+        'label': el_dict.pop('<name>'),
+        'note': el_dict.pop('<note>', None),
+    }
+    el = element_type.create(**d)
+
+    if parent_el is not None:
+        g.is_a.create(el, parent_el)
+
+    for attr_type_name in el_dict.pop('<attr_types>', []):
+        (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
+        g.has_attr_type.create(el, attr_type)
+
+    for attr_type_name, attr_value in el_dict.pop('<attrs>', {}).iteritems():
+        attribute = g.attributes.create(value=attr_value)
+        (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
+        g.has_attr_type.create(attribute, attr_type)
+        g.has_attribute.create(el, attribute)
+
+    for standard_name in el_dict.pop('<standards>', []):
+        (standard,) = g.standards.index.lookup(label=standard_name)
+        g.implements.create(el, standard)
+
+    for child_el_dict in el_dict.pop('<children>', []):
+        _add_element(child_el_dict, el, element_type)
+
+    assert not el_dict, el_dict
+
+
+def load_standard():
+    import data
+    standards = treetools.inflate_tree(data.standards)
+    for standard_dict in standards:
+        _add_element(standard_dict, None, g.standards)
+
+def load_connectors():
+    import data
+    connectors = treetools.inflate_tree(data.connectors)
+    for connector_dict in connectors:
+        _add_element(connector_dict, None, g.connectors)
+
+def load_sub_parts():
+    import data
+    parts = treetools.inflate_tree(data.subparts)
+
+    for part_dict in parts:
+        (part,) = g.parts.index.lookup(label=part_dict.pop('<name>'))
+        for child_part_dict in part_dict.pop('<children>'):
+            _add_element(child_part_dict, part, g.parts)
+
+        assert not part_dict, part_dict
 
 
 base_template = '''
@@ -199,7 +271,10 @@ def reset_db(args):
 
     load_units()
     load_attr_types()
-    load_parts()
+    load_root_parts()
+    load_standard()
+    load_connectors()
+    load_sub_parts()
     print 'Finished importing'
 
 
