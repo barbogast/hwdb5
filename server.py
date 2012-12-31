@@ -2,6 +2,7 @@
 
 import argparse
 import json
+from collections import OrderedDict
 
 from bulbs.rexster import Graph, Config
 from bulbs.model import Node, Relationship
@@ -220,13 +221,26 @@ def load_sub_parts():
 
 
 base_template = '''
-<body>
+{% extends "base.html" %}
+{% block body %}
   <div class="container">
     <h1>{{heading}}</h1>
     {{content}}
   </div>
-</body>
-'''
+{% endblock %}'''
+
+menu_items = OrderedDict([
+    ('/parts', 'Parts'),
+    ('/attr_types', 'Attribute Types'),
+    ('/attributes', 'Attributes'),
+    ('/units', 'Units'),
+    ('/combinations', 'Combinations'),
+    ('/standards', 'Standards'),
+])
+
+def _render_string(tmpl_str, **kwargs):
+    """ Adds common template arguments """
+    return render_template_string(tmpl_str, menu_items=menu_items, **kwargs)
 
 
 app = Flask(__name__)
@@ -238,7 +252,7 @@ def units_view():
         unit_html.append(H.li(unit.name, ' [%s]'%unit.label))
 
     doc = H.div(H.h1('Units'), H.ul(unit_html))
-    return render_template_string(base_template, content=doc)
+    return _render_string(base_template, content=doc)
 
 
 @app.route('/parts')
@@ -251,8 +265,8 @@ def parts_view():
                 part = edge.outV()
                 parts_html.append(H.li(part.label, _get_part_li(part)))
         return H.ul(parts_html)
-    doc = _get_part_li(g.root_parts.get_all().next())
-    return render_template_string(base_template, content=doc)
+    doc = H.div(id='tree')(_get_part_li(g.root_parts.get_all().next()))
+    return _render_string(base_template, heading='Parts', content=doc)
 
 
 
