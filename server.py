@@ -31,8 +31,14 @@ class Connector(LabeledNode):
     element_type = "connector"
     label = String(nullable=False)
 
+class RootConnector(LabeledNode):
+    element_type = 'root_connector'
+
 class Connection(Node):
     element_type = "part_connection"
+
+class RootStandard(LabeledNode):
+    element_type = 'root_standard'
 
 class Standard(LabeledNode):
     element_type = "standard"
@@ -103,12 +109,14 @@ def init_graph():
     g = Graph(config)
     g.add_proxy("root_parts", RootPart)
     g.add_proxy("parts", Part)
+    g.add_proxy("root_standards", RootStandard)
     g.add_proxy("standards", Standard)
     g.add_proxy("connections", Connection)
     g.add_proxy("attr_types", AttrType)
     g.add_proxy("companies", Company)
     g.add_proxy("units", Unit)
     g.add_proxy("attributes", Attribute)
+    g.add_proxy("root_connectors", RootConnector)
     g.add_proxy("connectors", Connector)
 
     g.add_proxy("is_a", IsA)
@@ -145,27 +153,7 @@ def load_attr_types():
         g.is_unit.create(attr_type_obj, unit)
 
 
-def load_root_parts():
-    import data
-    parts = treetools.inflate_tree(data.parts)
-
-    for part_dict in parts:
-        d = {
-            'label': part_dict.pop('<name>'),
-            'note': part_dict.pop('<note>', None),
-        }
-
-        part = g.parts.create(**d)
-        g.is_a.create(part, g.root_parts.get_all().next())
-
-        for attr_type_name in part_dict.pop('<attr_types>', []):
-            (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
-            g.has_attr_type.create(part, attr_type)
-
-        assert not part_dict
-
-
-def _add_element(el_dict, parent_el, element_type):
+def _add_element(el_dict, parent_el, element_type, root_element_node):
     assert 'attr_types' not in el_dict, 'attr_types should be on the first level elements of the part tree (or should they?)'
     d = {
         'label': el_dict.pop('<name>'),
@@ -173,7 +161,9 @@ def _add_element(el_dict, parent_el, element_type):
     }
     el = element_type.create(**d)
 
-    if parent_el is not None:
+    if parent_el is None:
+        g.is_a.create(el, root_element_node)
+    else:
         g.is_a.create(el, parent_el)
 
     for attr_type_name in el_dict.pop('<attr_types>', []):
@@ -191,22 +181,34 @@ def _add_element(el_dict, parent_el, element_type):
         g.implements.create(el, standard)
 
     for child_el_dict in el_dict.pop('<children>', []):
-        _add_element(child_el_dict, el, element_type)
+        _add_element(child_el_dict, el, element_type, root_element_node)
 
     assert not el_dict, el_dict
 
 
+def load_root_parts():
+    import data
+    (root_part,) = g.root_parts.get_all()
+    parts = treetools.inflate_tree(data.parts)
+    for part_dict in parts:
+        _add_element(part_dict, None, g.parts, root_part)
+
+
 def load_standard():
     import data
+    (root_standard,) = g.root_standards.get_all()
     standards = treetools.inflate_tree(data.standards)
     for standard_dict in standards:
-        _add_element(standard_dict, None, g.standards)
+        _add_element(standard_dict, None, g.standards, root_standard)
+
 
 def load_connectors():
     import data
+    (root_connector,) = g.root_connectors.get_all()
     connectors = treetools.inflate_tree(data.connectors)
     for connector_dict in connectors:
-        _add_element(connector_dict, None, g.connectors)
+        _add_element(connector_dict, None, g.connectors, root_connector)
+
 
 def load_sub_parts():
     import data
@@ -215,7 +217,7 @@ def load_sub_parts():
     for part_dict in parts:
         (part,) = g.parts.index.lookup(label=part_dict.pop('<name>'))
         for child_part_dict in part_dict.pop('<children>'):
-            _add_element(child_part_dict, part, g.parts)
+            _add_element(child_part_dict, part, g.parts, None)
 
         assert not part_dict, part_dict
 
@@ -282,6 +284,8 @@ def reset_db(args):
     g.clear()
     g = init_graph()
     root_part = g.root_parts.create()
+    root_standard = g.root_standards.create()
+    root_connector = g.root_connectors.create()
 
     load_units()
     load_attr_types()
