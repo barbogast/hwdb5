@@ -3,11 +3,12 @@
 import argparse
 import json
 from collections import OrderedDict
+from operator import itemgetter
 
 from bulbs.rexster import Graph, Config
 from bulbs.model import Node, Relationship
 from bulbs.property import String, Integer, DateTime
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, jsonify
 from flaskext.htmlbuilder import html as H
 from flask_debugtoolbar import DebugToolbarExtension
 
@@ -225,6 +226,22 @@ def load_sub_parts():
 base_template = '''
 {% extends "base.html" %}
 {% block body %}
+    <script type="text/javascript">
+        $(function(){
+            $("#tree").dynatree({
+                persist: true,
+                initAjax: {
+                    url: "{{json_url}}",
+                    postProcess: function(data, dataType){
+                        // flask.jsonify denies sending json with an array as root
+                        // for security reasons. so we unwrap it here
+                        return data.children
+                    },
+                },
+            });
+        });
+    </script>
+
   <div class="container">
     <h1>{{heading}}</h1>
     {{content}}
@@ -233,11 +250,12 @@ base_template = '''
 
 menu_items = OrderedDict([
     ('/parts', 'Parts'),
-    ('/attr_types', 'Attribute Types'),
-    ('/attributes', 'Attributes'),
+    #('/attr_types', 'Attribute Types'),
+    #('/attributes', 'Attributes'),
     ('/units', 'Units'),
-    ('/combinations', 'Combinations'),
+    #('/combinations', 'Combinations'),
     ('/standards', 'Standards'),
+    ('/connectors', 'Connectors'),
 ])
 
 def _render_string(tmpl_str, **kwargs):
@@ -252,24 +270,61 @@ def units_view():
     unit_html = []
     for unit in g.units.get_all():
         unit_html.append(H.li(unit.name, ' [%s]'%unit.label))
-
-    doc = H.div(H.h1('Units'), H.ul(unit_html))
-    return _render_string(base_template, content=doc)
+    return _render_string(base_template, heading='Units', content=H.ul(unit_html))
 
 
 @app.route('/parts')
 def parts_view():
-    def _get_part_li(parent_part):
-        parts_html = []
-        edges_iter = parent_part.inE('is_a')
-        if edges_iter:
-            for edge in edges_iter:
-                part = edge.outV()
-                parts_html.append(H.li(part.label, _get_part_li(part)))
-        return H.ul(parts_html)
-    doc = H.div(id='tree')(_get_part_li(g.root_parts.get_all().next()))
-    return _render_string(base_template, heading='Parts', content=doc)
+     return _render_string(base_template,
+                           heading='Parts',
+                           content=H.div(id='tree'),
+                           json_url='parts.json')
 
+
+@app.route('/standards')
+def standards_view():
+    return _render_string(base_template,
+                          heading='Standards',
+                          content=H.div(id='tree'),
+                          json_url='standards.json')
+
+
+@app.route('/connectors')
+def connectors_view():
+    return _render_string(base_template,
+                          heading='Standards',
+                          content=H.div(id='tree'),
+                          json_url='connectors.json')
+
+
+def _get_element_json(parent_el):
+    l = []
+    edges_iter = parent_el.inE('is_a')
+    if edges_iter:
+        for edge in edges_iter:
+            element = edge.outV()
+            l.append({'title': element.label,
+                      'children': _get_element_json(element)})
+    l.sort(key=itemgetter('title'))
+    return l
+
+
+@app.route('/parts.json')
+def parts_json():
+    (root,) = g.root_parts.get_all()
+    return jsonify({'children': _get_element_json(root)})
+
+
+@app.route('/standards.json')
+def standards_json():
+    (root,) = g.root_standards.get_all()
+    return jsonify({'children': _get_element_json(root)})
+
+
+@app.route('/connectors.json')
+def connectors_json():
+    (root,) = g.root_connectors.get_all()
+    return jsonify({'children': _get_element_json(root)})
 
 
 def reset_db(args):
