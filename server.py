@@ -8,7 +8,7 @@ from operator import itemgetter
 from bulbs.rexster import Graph, Config
 from bulbs.model import Node, Relationship
 from bulbs.property import String, Integer, DateTime
-from flask import Flask, render_template_string, jsonify
+from flask import Flask, render_template_string, jsonify, request
 from flaskext.htmlbuilder import html as H
 from flask_debugtoolbar import DebugToolbarExtension
 
@@ -278,7 +278,7 @@ def parts_view():
      return _render_string(base_template,
                            heading='Parts',
                            content=H.div(id='tree'),
-                           json_url='parts.json')
+                           json_url='json?type=parts')
 
 
 @app.route('/standards')
@@ -286,7 +286,7 @@ def standards_view():
     return _render_string(base_template,
                           heading='Standards',
                           content=H.div(id='tree'),
-                          json_url='standards.json')
+                          json_url='json?type=standards')
 
 
 @app.route('/connectors')
@@ -294,7 +294,7 @@ def connectors_view():
     return _render_string(base_template,
                           heading='Standards',
                           content=H.div(id='tree'),
-                          json_url='connectors.json')
+                          json_url='json?type=connectors')
 
 
 def _get_element_json(parent_el):
@@ -309,21 +309,17 @@ def _get_element_json(parent_el):
     return l
 
 
-@app.route('/parts.json')
+@app.route('/json')
 def parts_json():
-    (root,) = g.root_parts.get_all()
-    return jsonify({'children': _get_element_json(root)})
-
-
-@app.route('/standards.json')
-def standards_json():
-    (root,) = g.root_standards.get_all()
-    return jsonify({'children': _get_element_json(root)})
-
-
-@app.route('/connectors.json')
-def connectors_json():
-    (root,) = g.root_connectors.get_all()
+    data_type = request.args['type']
+    if data_type == 'parts':
+        (root,) = g.root_parts.get_all()
+    elif data_type == 'standards':
+        (root,) = g.root_standards.get_all()
+    elif data_type == 'connectors':
+        (root,) = g.root_connectors.get_all()
+    else:
+        raise ValueError()
     return jsonify({'children': _get_element_json(root)})
 
 
