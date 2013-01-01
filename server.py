@@ -14,7 +14,11 @@ from flask_debugtoolbar import DebugToolbarExtension
 
 import treetools
 
-class LabeledNode(Node):
+
+class BaseNode(Node):
+    __mode__ = 'STRICT'
+
+class LabeledNode(BaseNode):
     note = String(nullable=True)
 
     def __unicode__(self):
@@ -35,7 +39,7 @@ class Connector(LabeledNode):
 class RootConnector(LabeledNode):
     element_type = 'root_connector'
 
-class Connection(Node):
+class Connection(BaseNode):
     element_type = "part_connection"
 
 class RootStandard(LabeledNode):
@@ -59,7 +63,7 @@ class Unit(LabeledNode):
     label = String(nullable=False)
     format = String(nullable=False)
 
-class Attribute(Node):
+class Attribute(BaseNode):
     element_type = "attribute"
     value = String(nullable=False)
 
