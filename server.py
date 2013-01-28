@@ -69,12 +69,10 @@ def attr_types():
     rows = []
     attr_types = sorted(g.attr_types.get_all(), key=attrgetter('label'))
     for attr_type in attr_types:
-        (unit_conn,) = attr_type.outE('is_unit')
-        unit = unit_conn.inV()
+        (unit,) = attr_type.outV('is_unit')
 
         parts = []
-        for has_attr_type in ntl(attr_type.inE('can_have_attr_type')):
-            part = has_attr_type.outV()
+        for part in ntl(attr_type.inV('can_have_attr_type')):
             parts.append(part.label)
 
         rows.append(H.tr(
@@ -99,15 +97,12 @@ def attributes_view():
     attributes_li = []
     for attribute in g.attributes.get_all():
         parts_li = []
-        for has_attribute in attribute.inE('has_attribute'):
-            part = has_attribute.outV()
+        for part in attribute.inV('has_attribute'):
             parts_li.append(H.li(part.label))
 
         if len(parts_li) > 1:
-            (has_attr_type,) = attribute.outE('has_attr_type')
-            attr_type = has_attr_type.inV()
-            (has_unit,) = attr_type.outE('is_unit')
-            unit = has_unit.inV()
+            (attr_type,) = attribute.outV('has_attr_type')
+            (unit,) = attr_type.outV('is_unit')
 
             attributes_li.append(
                 H.ul(
@@ -167,20 +162,18 @@ def _get_connections_json():
                 connectors[connector.eid].append(connector_dict)
 
         # get connected parts
-        for connected_from in ntl(part.outE('connected_from')):
-            connection = connected_from.inV()
+        for connection in ntl(part.outV('connected_from')):
 
             # check if the connection has a connector
-            connected_vias = connection.outE('connected_via')
-            if connected_vias:
-                (connected_via,) = connected_vias
+            connected_via_list = connection.outE('connected_via')
+            if connected_via_list:
+                (connected_via,) = connected_via_list
                 connector_eid = connected_via.inV().eid
             else:
                 connector_eid = None
 
             # get the connected part
-            (connected_to,) = connection.outE('connected_to')
-            childpart = connected_to.inV()
+            (childpart,) = connection.outV('connected_to')
             child_dict = {'title': childpart.label,
                           'children': _get_connections_for_part(childpart)}
 
@@ -205,10 +198,8 @@ def _get_connections_json():
 
     l = []
     (root,) = g.connection_roots.get_all()
-    for edge in ntl(root.inE('is_a')):
+    for part in ntl(root.inV('is_a')):
         connected_parts = []
-
-        part = edge.outV()
         l.append({'title': part.label,
                   'children': _get_connections_for_part(part)
         })
@@ -218,14 +209,7 @@ def _get_connections_json():
 
 def _get_element_json(parent_el):
     l = []
-    for edge in ntl(parent_el.inE('is_a')):
-        element = edge.outV()
-
-        children = []
-        for edge in ntl(element.inE('belongs_to')):
-            connection = edge.outV()
-            (connected_part,) = connection.inE('connected_from')
-
+    for element in ntl(parent_el.inV('is_a')):
         l.append({'title': element.label,
                   'children': _get_element_json(element)})
     l.sort(key=itemgetter('title'))

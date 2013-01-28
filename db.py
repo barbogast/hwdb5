@@ -72,8 +72,7 @@ def _add_element(el_dict, parent_el, element_type, root_element_node):
         # Try to find an exisiting attribute with the same value and attr_type
         attribute = None
         for attribute_2 in ntl(g.attributes.index.lookup('value', attr_value)):
-            (has_attr_type,) = attribute_2.outE('has_attr_type')
-            attr_type_2 = has_attr_type.inV()
+            (attr_type_2,) = attribute_2.outV('has_attr_type')
             if attr_type == attr_type_2:
                 attribute = attribute_2
                 break
