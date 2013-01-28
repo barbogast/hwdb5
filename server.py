@@ -13,6 +13,7 @@ from flaskext.htmlbuilder import html as H
 from flask_debugtoolbar import DebugToolbarExtension
 
 import treetools
+import data
 
 
 class BaseNode(Node):
@@ -127,7 +128,6 @@ def init_graph():
 
 
 def load_units():
-    import data
     for unit in data.units:
         d = {
             'name': unit.pop('label'),
@@ -140,7 +140,6 @@ def load_units():
 
 
 def load_attr_types():
-    import data
     for attr_type in data.attr_types:
         (unit,) = list(g.units.index.lookup(label=attr_type.pop('unit')))
         attr_type['label'] = attr_type.pop('name')
@@ -182,7 +181,6 @@ def _add_element(el_dict, parent_el, element_type, root_element_node):
 
 
 def load_root_parts():
-    import data
     (root_part,) = g.root_parts.get_all()
     parts = treetools.inflate_tree(data.parts)
     for part_dict in parts:
@@ -190,7 +188,6 @@ def load_root_parts():
 
 
 def load_standard():
-    import data
     (root_standard,) = g.root_standards.get_all()
     standards = treetools.inflate_tree(data.standards)
     for standard_dict in standards:
@@ -198,7 +195,6 @@ def load_standard():
 
 
 def load_connectors():
-    import data
     (root_connector,) = g.root_connectors.get_all()
     connectors = treetools.inflate_tree(data.connectors)
     for connector_dict in connectors:
@@ -206,7 +202,6 @@ def load_connectors():
 
 
 def load_sub_parts():
-    import data
     parts = treetools.inflate_tree(data.subparts)
 
     for part_dict in parts:
@@ -244,7 +239,6 @@ def load_connections():
         assert not part_dict, part_dict
 
 
-    import data
     systems = treetools.inflate_tree(data.systems)
     (connection_root,) = g.connection_roots.get_all()
     for system_dict in systems:
