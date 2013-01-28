@@ -20,23 +20,22 @@ class BaseNode(Node):
 
 class LabeledNode(BaseNode):
     note = String(nullable=True)
+    label = String(nullable=False)
 
     def __unicode__(self):
         return "<%s: %r>" % (self.__class__.__name__, self.label)
 
 
-class RootPart(LabeledNode):
+class RootPart(BaseNode):
     element_type = 'root_part'
 
 class Part(LabeledNode):
     element_type = "part"
-    label = String(nullable=False)
 
 class Connector(LabeledNode):
     element_type = "connector"
-    label = String(nullable=False)
 
-class RootConnector(LabeledNode):
+class RootConnector(BaseNode):
     element_type = 'root_connector'
 
 class Connection(BaseNode):
@@ -45,25 +44,21 @@ class Connection(BaseNode):
 class ConnectionRoot(BaseNode):
     element_type = "connection_root"
 
-class RootStandard(LabeledNode):
+class RootStandard(BaseNode):
     element_type = 'root_standard'
 
 class Standard(LabeledNode):
     element_type = "standard"
-    label = String(nullable=False)
 
 class AttrType(LabeledNode):
     element_type = "attr_type"
-    label = String(nullable=False)
 
 class Company(LabeledNode):
     element_type = "company"
-    label = String(nullable=False)
 
 class Unit(LabeledNode):
     element_type = "unit"
     name = String(nullable=False)
-    label = String(nullable=False)
     format = String(nullable=False)
 
 class Attribute(BaseNode):
