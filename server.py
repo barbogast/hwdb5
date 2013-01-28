@@ -82,19 +82,6 @@ class HasAttrType(Relationship): label = "has_attr_type"
 class HasAttribute(Relationship): label = "has_attribute"
 class HasConnector(Relationship): label = 'has_connector'
 
-'''class HasConnector(Relationship):
-    """ Part => Connector """
-    label = "has_connector"
-
-class IsConnectedTo(Relationship):
-    """ Connector => Part """
-    label = "is_connected_to"
-    quantity = Integer(nullable=False)'''
-
-'''class Produces(Relationship):
-    """ Company => Part """
-    label = "produces"'''
-
 
 relationships = (
     (Standard,      IsA,            Standard),
@@ -135,17 +122,6 @@ def init_graph():
     g.add_proxy("connections", Connection)
     g.add_proxy("connection_roots", ConnectionRoot)
 
-    '''g.add_proxy("is_a", IsA)
-    #g.add_proxy("has_connection", HasConnection)
-    #g.add_proxy("has_part", HasPart)
-    g.add_proxy("has_connector", HasConnector)
-    g.add_proxy("is_connected_to", IsConnectedTo)
-    g.add_proxy("belongs_to", BelongsTo)
-    g.add_proxy("implements", Implements)
-    g.add_proxy("produces", Produces)
-    g.add_proxy("is_unit", IsUnit)
-    g.add_proxy("has_attr_type", HasAttrType)
-    g.add_proxy("has_attribute", HasAttribute)'''
 
     for node_from, rel, node_to in relationships:
         g.add_proxy(rel.label, rel)
@@ -241,33 +217,6 @@ def load_sub_parts():
             _add_element(child_part_dict, part, g.parts, None)
 
         assert not part_dict, part_dict
-
-
-'''def load_connections():
-    def _add_connection(system_part, parent_part, children):
-        for part_dict in children:
-            print part_dict['<name>']
-            (part,) = g.parts.index.lookup(label=part_dict.pop('<name>'))
-            connection = g.connections.create()
-            g.belongs_to.create(connection, system_part)
-            g.connected_from.create(parent_part, connection)
-            g.connected_to.create(connection, part, quantity=part_dict.pop('<quantity>', 1))
-
-            if '<via>' in part_dict:
-                connector = g.connectors.index.lookup(label=part_dict.pop('<via>'))
-                g.connected_via.create(connection, connector)
-
-            _add_connection(system_part, part, part_dict.pop('<children>', []))
-            assert not part_dict, part_dict
-
-
-    import data
-    systems = treetools.inflate_tree(data.systems)
-    for system_dict in systems:
-        (system_part,) = g.parts.index.lookup(label=system_dict.pop('<name>'))
-        _add_connection(system_part, system_part, system_dict.pop('<children>'))
-        assert not system_dict, system_dict'''
-
 
 
 def load_connections():
