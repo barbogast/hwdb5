@@ -40,6 +40,7 @@ class RootConnector(BaseNode):
 
 class Connection(BaseNode):
     element_type = "part_connection"
+    quantity = Integer()
 
 class ConnectionRoot(BaseNode):
     element_type = "connection_root"
@@ -75,7 +76,9 @@ class Implements(Relationship): label = "implements"
 class IsUnit(Relationship): label = "is_unit"
 class HasAttrType(Relationship): label = "has_attr_type"
 class HasAttribute(Relationship): label = "has_attribute"
-class HasConnector(Relationship): label = 'has_connector'
+class HasConnector(Relationship):
+    label = 'has_connector'
+    quantity = Integer(nullable=False)
 
 
 relationships = (
@@ -217,10 +220,10 @@ def load_sub_parts():
 def load_connections():
     def _create_connection(system_part, parent_part, child_dict, connector):
         (child_part,) = g.parts.index.lookup(label=child_dict.pop('<name>'))
-        connection = g.connections.create()
+        connection = g.connections.create(quantity=child_dict.pop('<quantity>', 1))
         g.belongs_to.create(connection, system_part)
         g.connected_from.create(parent_part, connection)
-        g.connected_to.create(connection, child_part, quantity=child_dict.pop('<quantity>', 1))
+        g.connected_to.create(connection, child_part)
         if connector:
             g.connected_via.create(connection, connector)
 
@@ -340,16 +343,25 @@ def _NTL(v):
 
 def _get_connections_json():
     def _get_connections_for_part(part):
+        # key=connecor.eid, value=list_of_connector_dicts
         connectors = {}
+
+        # list of dicts
         without_connectors = []
 
+        # get all connectors that his part has
         for has_connector in _NTL(part.outE('has_connector')):
             connector = has_connector.inV()
-            connectors[connector.eid] = {'title': connector.label, 'isFolder': True, 'children': []}
+            connectors[connector.eid] = []
+            for i in xrange(has_connector.quantity):
+                connector_dict = {'title': connector.label, 'isFolder': True, 'children': []}
+                connectors[connector.eid].append(connector_dict)
 
+        # get connected parts
         for connected_from in _NTL(part.outE('connected_from')):
             connection = connected_from.inV()
 
+            # check if the connection has a connector
             connected_vias = connection.outE('connected_via')
             if connected_vias:
                 (connected_via,) = connected_vias
@@ -357,16 +369,28 @@ def _get_connections_json():
             else:
                 connector_eid = None
 
-            for connected_to in connection.outE('connected_to'):
-                childpart = connected_to.inV()
-                child_dict = {'title': childpart.label,
-                              'children': _get_connections_for_part(childpart)}
-                if connector_eid is None:
-                    without_connectors.append(child_dict)
-                else:
-                    connectors[connector_eid]['children'].append(child_dict)
+            # get the connected part
+            (connected_to,) = connection.outE('connected_to')
+            childpart = connected_to.inV()
+            child_dict = {'title': childpart.label,
+                          'children': _get_connections_for_part(childpart)}
 
-        result = connectors.values() + without_connectors
+            if connector_eid is None:
+                without_connectors.append(child_dict)
+            else:
+                # associate each connected part with one connector
+                for i in xrange(connection.quantity):
+                    for connector in connectors[connector_eid]:
+                        if not connector['children']:
+                            connector['children'].append(child_dict)
+                            break
+                    else:
+                        raise Exception('Too few connectors')
+
+        flattened_connectors = []
+        for connectorList in connectors.values():
+            flattened_connectors.extend(connectorList)
+        result = flattened_connectors + without_connectors
         return sorted(result, key=methodcaller('get', 'title'))
 
 
