@@ -4,6 +4,7 @@ import argparse
 import json
 from collections import OrderedDict
 from operator import itemgetter, methodcaller, attrgetter
+from logging import DEBUG
 
 from flask import Flask, render_template_string, jsonify, request, Markup
 from flaskext.htmlbuilder import html as H
@@ -232,7 +233,7 @@ def export_xml(args):
 def run_ui(args):
     global g
     g = init_graph()
-
+    #g.config.set_logger(DEBUG)
     app.debug = True
     app.secret_key = 'Todo'
     if True:
