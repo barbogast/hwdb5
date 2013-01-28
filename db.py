@@ -63,7 +63,7 @@ def _add_element(el_dict, parent_el, element_type, root_element_node):
 
     for attr_type_name in el_dict.pop('<attr_types>', []):
         (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
-        g.has_attr_type.create(el, attr_type)
+        g.can_have_attr_type.create(el, attr_type)
 
     for attr_type_name, attr_value in el_dict.pop('<attrs>', {}).iteritems():
         attribute = g.attributes.create(value=attr_value)

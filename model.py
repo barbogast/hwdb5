@@ -62,6 +62,7 @@ class ConnectedTo(Relationship): label = "connected_to"
 class Implements(Relationship): label = "implements"
 class IsUnit(Relationship): label = "is_unit"
 class HasAttrType(Relationship): label = "has_attr_type"
+class CanHaveAttrTyp(Relationship): label = "can_have_attr_type"
 class HasAttribute(Relationship): label = "has_attribute"
 class HasConnector(Relationship):
     label = 'has_connector'
@@ -79,7 +80,7 @@ relationships = (
     (Part,          HasConnector,   Connector),
     (Part,          Implements,     Standard),
     (Part,          HasAttribute,   Attribute),
-    (Part,          HasAttrType,    AttrType,),
+    (Part,          CanHaveAttrTyp, AttrType,),
     (Connection,    BelongsTo,      Part),
     (Connection,    ConnectedVia,   Connector),
     (Connection,    ConnectedFrom,  Part),

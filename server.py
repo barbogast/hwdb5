@@ -3,9 +3,9 @@
 import argparse
 import json
 from collections import OrderedDict
-from operator import itemgetter, methodcaller
+from operator import itemgetter, methodcaller, attrgetter
 
-from flask import Flask, render_template_string, jsonify, request
+from flask import Flask, render_template_string, jsonify, request, Markup
 from flaskext.htmlbuilder import html as H
 from flask_debugtoolbar import DebugToolbarExtension
 
@@ -40,7 +40,7 @@ base_template = '''
 
 menu_items = OrderedDict([
     ('/parts', 'Parts'),
-    #('/attr_types', 'Attribute Types'),
+    ('/attr_types', 'Attribute Types'),
     #('/attributes', 'Attributes'),
     ('/units', 'Units'),
     ('/connections', 'Connections'),
@@ -60,7 +60,37 @@ def units_view():
     unit_html = []
     for unit in g.units.get_all():
         unit_html.append(H.li(unit.name, ' [%s]'%unit.label))
-    return _render_string(base_template, heading='Units', content=H.ul(unit_html))
+    return _render_string(base_template, heading='Attribute Types', content=H.ul(unit_html))
+
+@app.route('/attr_types')
+def attr_types():
+    rows = []
+    attr_types = sorted(g.attr_types.get_all(), key=attrgetter('label'))
+    for attr_type in attr_types:
+        (unit_conn,) = attr_type.outE('is_unit')
+        unit = unit_conn.inV()
+
+        parts = []
+        for has_attr_type in _NTL(attr_type.inE('can_have_attr_type')):
+            part = has_attr_type.outV()
+            parts.append(part.label)
+
+        rows.append(H.tr(
+            H.td(Markup(attr_type.label)), #TODO: using Markup is unsafe
+            H.td(unit.name),
+            H.td(', '.join(parts)),
+            H.td(attr_type.note)
+        ))
+
+    content = H.table(class_="table table-condensed table-bordered")(
+        H.thead(
+            H.tr(
+                H.th('Name'), H.th('unit'), H.th('Part'), H.th('Note')
+            )
+        ),
+        H.tbody(rows)
+    )
+    return _render_string(base_template, heading='Units', content=content)
 
 
 @app.route('/parts')
