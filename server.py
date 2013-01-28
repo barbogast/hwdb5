@@ -43,7 +43,7 @@ base_template = '''
 menu_items = OrderedDict([
     ('/parts', 'Parts'),
     ('/attr_types', 'Attribute Types'),
-    #('/attributes', 'Attributes'),
+    ('/attributes', 'Attributes'),
     ('/units', 'Units'),
     ('/connections', 'Connections'),
     ('/standards', 'Standards'),
@@ -94,6 +94,29 @@ def attr_types():
     )
     return _render_string(base_template, heading='Units', content=content)
 
+@app.route('/attributes')
+def attributes_view():
+    attributes_li = []
+    for attribute in g.attributes.get_all():
+        parts_li = []
+        for has_attribute in attribute.inE('has_attribute'):
+            part = has_attribute.outV()
+            parts_li.append(H.li(part.label))
+
+        if len(parts_li) > 1:
+            (has_attr_type,) = attribute.outE('has_attr_type')
+            attr_type = has_attr_type.inV()
+            (has_unit,) = attr_type.outE('is_unit')
+            unit = has_unit.inV()
+
+            attributes_li.append(
+                H.ul(
+                    attr_type.label, ': ',
+                    H.strong(attribute.value, ' ', Markup(unit.name)),
+                    H.ul( sorted(parts_li, key=str))
+                )
+            )
+    return _render_string(base_template, heading='Attributes', content=H.ul(sorted(attributes_li, key=str)))
 
 @app.route('/parts')
 def parts_view():

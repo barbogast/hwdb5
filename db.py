@@ -2,6 +2,7 @@ from bulbs.rexster import Graph, Config
 
 import treetools
 import data
+from utils import ntl
 from model import *
 
 
@@ -66,9 +67,21 @@ def _add_element(el_dict, parent_el, element_type, root_element_node):
         g.can_have_attr_type.create(el, attr_type)
 
     for attr_type_name, attr_value in el_dict.pop('<attrs>', {}).iteritems():
-        attribute = g.attributes.create(value=attr_value)
         (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
-        g.has_attr_type.create(attribute, attr_type)
+
+        # Try to find an exisiting attribute with the same value and attr_type
+        attribute = None
+        for attribute_2 in ntl(g.attributes.index.lookup('value', attr_value)):
+            (has_attr_type,) = attribute_2.outE('has_attr_type')
+            attr_type_2 = has_attr_type.inV()
+            if attr_type == attr_type_2:
+                attribute = attribute_2
+                break
+
+        if not attribute:
+            attribute = g.attributes.create(value=attr_value)
+            g.has_attr_type.create(attribute, attr_type)
+
         g.has_attribute.create(el, attribute)
 
     for standard_name in el_dict.pop('<standards>', []):
