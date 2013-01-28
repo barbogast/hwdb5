@@ -11,6 +11,7 @@ from flask_debugtoolbar import DebugToolbarExtension
 
 from model import *
 from db import reset_db, init_graph
+from utils import ntl
 
 
 base_template = '''
@@ -71,7 +72,7 @@ def attr_types():
         unit = unit_conn.inV()
 
         parts = []
-        for has_attr_type in _NTL(attr_type.inE('can_have_attr_type')):
+        for has_attr_type in ntl(attr_type.inE('can_have_attr_type')):
             part = has_attr_type.outV()
             parts.append(part.label)
 
@@ -124,10 +125,6 @@ def connections_view():
                           content=H.div(id='tree'),
                           json_url='json?type=connections')
 
-def _NTL(v):
-    """ NoneToList: Convert None into [] """
-    return [] if v is None else v
-
 
 def _get_connections_json():
     def _get_connections_for_part(part):
@@ -138,7 +135,7 @@ def _get_connections_json():
         without_connectors = []
 
         # get all connectors that his part has
-        for has_connector in _NTL(part.outE('has_connector')):
+        for has_connector in ntl(part.outE('has_connector')):
             connector = has_connector.inV()
             connectors[connector.eid] = []
             for i in xrange(has_connector.quantity):
@@ -146,7 +143,7 @@ def _get_connections_json():
                 connectors[connector.eid].append(connector_dict)
 
         # get connected parts
-        for connected_from in _NTL(part.outE('connected_from')):
+        for connected_from in ntl(part.outE('connected_from')):
             connection = connected_from.inV()
 
             # check if the connection has a connector
@@ -184,7 +181,7 @@ def _get_connections_json():
 
     l = []
     (root,) = g.connection_roots.get_all()
-    for edge in _NTL(root.inE('is_a')):
+    for edge in ntl(root.inE('is_a')):
         connected_parts = []
 
         part = edge.outV()
@@ -197,11 +194,11 @@ def _get_connections_json():
 
 def _get_element_json(parent_el):
     l = []
-    for edge in _NTL(parent_el.inE('is_a')):
+    for edge in ntl(parent_el.inE('is_a')):
         element = edge.outV()
 
         children = []
-        for edge in _NTL(element.inE('belongs_to')):
+        for edge in ntl(element.inE('belongs_to')):
             connection = edge.outV()
             (connected_part,) = connection.inE('connected_from')
 
