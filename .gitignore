@@ -1,0 +1,12 @@
+*.pyc
+*.db
+*.bak
+
+# Trial
+_trial_temp
+
+# WingIDE
+*.wpr
+*.wpu
+
+rexster-server-*
