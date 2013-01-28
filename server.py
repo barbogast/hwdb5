@@ -3,7 +3,7 @@
 import argparse
 import json
 from collections import OrderedDict
-from operator import itemgetter
+from operator import itemgetter, methodcaller
 
 from bulbs.rexster import Graph, Config
 from bulbs.model import Node, Relationship
@@ -42,6 +42,9 @@ class RootConnector(LabeledNode):
 class Connection(BaseNode):
     element_type = "part_connection"
 
+class ConnectionRoot(BaseNode):
+    element_type = "connection_root"
+
 class RootStandard(LabeledNode):
     element_type = 'root_standard'
 
@@ -68,44 +71,50 @@ class Attribute(BaseNode):
     value = String(nullable=False)
 
 
-class IsA(Relationship):
-    """ Standard => Standard
-        Part => Part
-        Part => Root Part """
-    label = "is_a"
+class IsA(Relationship): label = "is_a"
+class BelongsTo(Relationship): label = "belongs_to"
+class ConnectedVia(Relationship): label = "connected_via"
+class ConnectedFrom(Relationship): label = "connected_from"
+class ConnectedTo(Relationship): label = "connected_to"
+class Implements(Relationship): label = "implements"
+class IsUnit(Relationship): label = "is_unit"
+class HasAttrType(Relationship): label = "has_attr_type"
+class HasAttribute(Relationship): label = "has_attribute"
+class HasConnector(Relationship): label = 'has_connector'
 
-class HasConnection(Relationship):
-    """ Part => Connection """
-    label = "has_connection"
+'''class HasConnector(Relationship):
+    """ Part => Connector """
+    label = "has_connector"
 
-class HasPart(Relationship):
-    """ Connection => Part """
-    label = "has_part"
+class IsConnectedTo(Relationship):
+    """ Connector => Part """
+    label = "is_connected_to"
+    quantity = Integer(nullable=False)'''
 
-class BelongsTo(Relationship):
-    """ Connection => Part """
-    label = "belongs_to"
-
-class Implements(Relationship):
-    """ Part => Standard """
-    label = "implements"
-
-class Produces(Relationship):
+'''class Produces(Relationship):
     """ Company => Part """
-    label = "produces"
+    label = "produces"'''
 
-class IsUnit(Relationship):
-    """ Company => Part """
-    label = "is_unit"
 
-class HasAttrType(Relationship):
-    """ Part => AttrType
-        Attribute => AttrType """
-    label = "has_attr_type"
-
-class HasAttribute(Relationship):
-    """ Part => Attribute """
-    label = "has_attribute"
+relationships = (
+    (Standard,      IsA,            Standard),
+    (Standard,      IsA,            RootStandard),
+    (Connector,     IsA,            Connector),
+    (Connector,     IsA,            RootConnector),
+    (Part,          IsA,            Part),
+    (Part,          IsA,            RootPart),
+    (Part,          IsA,            ConnectionRoot),
+    (Part,          HasConnector,   Connector),
+    (Part,          Implements,     Standard),
+    (Part,          HasAttribute,   Attribute),
+    (Part,          HasAttrType,    AttrType,),
+    (Connection,    BelongsTo,      Part),
+    (Connection,    ConnectedVia,   Connector),
+    (Connection,    ConnectedFrom,  Part),
+    (Connection,    ConnectedTo,    Part),
+    (AttrType,      HasAttrType,    AttrType),
+    (AttrType,      IsUnit,         Unit),
+)
 
 
 g = None
@@ -123,16 +132,23 @@ def init_graph():
     g.add_proxy("attributes", Attribute)
     g.add_proxy("root_connectors", RootConnector)
     g.add_proxy("connectors", Connector)
+    g.add_proxy("connections", Connection)
+    g.add_proxy("connection_roots", ConnectionRoot)
 
-    g.add_proxy("is_a", IsA)
-    g.add_proxy("has_connection", HasConnection)
-    g.add_proxy("has_part", HasPart)
+    '''g.add_proxy("is_a", IsA)
+    #g.add_proxy("has_connection", HasConnection)
+    #g.add_proxy("has_part", HasPart)
+    g.add_proxy("has_connector", HasConnector)
+    g.add_proxy("is_connected_to", IsConnectedTo)
     g.add_proxy("belongs_to", BelongsTo)
     g.add_proxy("implements", Implements)
     g.add_proxy("produces", Produces)
     g.add_proxy("is_unit", IsUnit)
     g.add_proxy("has_attr_type", HasAttrType)
-    g.add_proxy("has_attribute", HasAttribute)
+    g.add_proxy("has_attribute", HasAttribute)'''
+
+    for node_from, rel, node_to in relationships:
+        g.add_proxy(rel.label, rel)
     return g
 
 
@@ -227,6 +243,71 @@ def load_sub_parts():
         assert not part_dict, part_dict
 
 
+'''def load_connections():
+    def _add_connection(system_part, parent_part, children):
+        for part_dict in children:
+            print part_dict['<name>']
+            (part,) = g.parts.index.lookup(label=part_dict.pop('<name>'))
+            connection = g.connections.create()
+            g.belongs_to.create(connection, system_part)
+            g.connected_from.create(parent_part, connection)
+            g.connected_to.create(connection, part, quantity=part_dict.pop('<quantity>', 1))
+
+            if '<via>' in part_dict:
+                connector = g.connectors.index.lookup(label=part_dict.pop('<via>'))
+                g.connected_via.create(connection, connector)
+
+            _add_connection(system_part, part, part_dict.pop('<children>', []))
+            assert not part_dict, part_dict
+
+
+    import data
+    systems = treetools.inflate_tree(data.systems)
+    for system_dict in systems:
+        (system_part,) = g.parts.index.lookup(label=system_dict.pop('<name>'))
+        _add_connection(system_part, system_part, system_dict.pop('<children>'))
+        assert not system_dict, system_dict'''
+
+
+
+def load_connections():
+    def _create_connection(system_part, parent_part, child_dict, connector):
+        (child_part,) = g.parts.index.lookup(label=child_dict.pop('<name>'))
+        connection = g.connections.create()
+        g.belongs_to.create(connection, system_part)
+        g.connected_from.create(parent_part, connection)
+        g.connected_to.create(connection, child_part, quantity=child_dict.pop('<quantity>', 1))
+        if connector:
+            g.connected_via.create(connection, connector)
+
+        _add_connection(system_part, child_part, child_dict)
+        assert not child_dict, child_dict
+
+
+    def _add_connection(system_part, parent_part, part_dict):
+        for child_dict in part_dict.pop('<no_connector>', []):
+            _create_connection(system_part, parent_part, child_dict, None)
+
+        for conn_dict in part_dict.pop('<connectors>', []):
+            (connector,) = g.connectors.index.lookup(label=conn_dict.pop('<name>'))
+            g.has_connector.create(parent_part, connector, quantity=conn_dict.pop('<quantity>', 1))
+            for child_dict in conn_dict.pop('<children>', []):
+                _create_connection(system_part, parent_part, child_dict, connector)
+
+        assert not part_dict, part_dict
+
+
+    import data
+    systems = treetools.inflate_tree(data.systems)
+    (connection_root,) = g.connection_roots.get_all()
+    for system_dict in systems:
+        (system_part,) = g.parts.index.lookup(label=system_dict.pop('<name>'))
+        g.is_a.create(system_part, connection_root)
+        _add_connection(system_part, system_part, system_dict)
+        assert not system_dict, system_dict
+
+
+
 base_template = '''
 {% extends "base.html" %}
 {% block body %}
@@ -257,7 +338,7 @@ menu_items = OrderedDict([
     #('/attr_types', 'Attribute Types'),
     #('/attributes', 'Attributes'),
     ('/units', 'Units'),
-    #('/combinations', 'Combinations'),
+    ('/connections', 'Connections'),
     ('/standards', 'Standards'),
     ('/connectors', 'Connectors'),
 ])
@@ -301,14 +382,75 @@ def connectors_view():
                           json_url='json?type=connectors')
 
 
+@app.route('/connections')
+def connections_view():
+    return _render_string(base_template,
+                          heading='connections',
+                          content=H.div(id='tree'),
+                          json_url='json?type=connections')
+
+def _NTL(v):
+    """ NoneToList: Convert None into [] """
+    return [] if v is None else v
+
+
+def _get_connections_json():
+    def _get_connections_for_part(part):
+        connectors = {}
+        without_connectors = []
+
+        for has_connector in _NTL(part.outE('has_connector')):
+            connector = has_connector.inV()
+            connectors[connector.eid] = {'title': connector.label, 'isFolder': True, 'children': []}
+
+        for connected_from in _NTL(part.outE('connected_from')):
+            connection = connected_from.inV()
+
+            connected_vias = connection.outE('connected_via')
+            if connected_vias:
+                (connected_via,) = connected_vias
+                connector_eid = connected_via.inV().eid
+            else:
+                connector_eid = None
+
+            for connected_to in connection.outE('connected_to'):
+                childpart = connected_to.inV()
+                child_dict = {'title': childpart.label,
+                              'children': _get_connections_for_part(childpart)}
+                if connector_eid is None:
+                    without_connectors.append(child_dict)
+                else:
+                    connectors[connector_eid]['children'].append(child_dict)
+
+        result = connectors.values() + without_connectors
+        return sorted(result, key=methodcaller('get', 'title'))
+
+
+    l = []
+    (root,) = g.connection_roots.get_all()
+    for edge in _NTL(root.inE('is_a')):
+        connected_parts = []
+
+        part = edge.outV()
+        l.append({'title': part.label,
+                  'children': _get_connections_for_part(part)
+        })
+    l.sort(key=itemgetter('title'))
+    return l
+
+
 def _get_element_json(parent_el):
     l = []
-    edges_iter = parent_el.inE('is_a')
-    if edges_iter:
-        for edge in edges_iter:
-            element = edge.outV()
-            l.append({'title': element.label,
-                      'children': _get_element_json(element)})
+    for edge in _NTL(parent_el.inE('is_a')):
+        element = edge.outV()
+
+        children = []
+        for edge in _NTL(element.inE('belongs_to')):
+            connection = edge.outV()
+            (connected_part,) = connection.inE('connected_from')
+
+        l.append({'title': element.label,
+                  'children': _get_element_json(element)})
     l.sort(key=itemgetter('title'))
     return l
 
@@ -322,6 +464,8 @@ def parts_json():
         (root,) = g.root_standards.get_all()
     elif data_type == 'connectors':
         (root,) = g.root_connectors.get_all()
+    elif data_type == 'connections':
+        return jsonify({'children': _get_connections_json()})
     else:
         raise ValueError()
     return jsonify({'children': _get_element_json(root)})
@@ -341,6 +485,7 @@ def reset_db(args):
     root_part = g.root_parts.create()
     root_standard = g.root_standards.create()
     root_connector = g.root_connectors.create()
+    connection_root = g.connection_roots.create()
 
     load_units()
     load_attr_types()
@@ -348,6 +493,7 @@ def reset_db(args):
     load_standard()
     load_connectors()
     load_sub_parts()
+    load_connections()
     print 'Finished importing'
 
 
