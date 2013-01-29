@@ -135,9 +135,10 @@ standards = [{
                          'Row Precharge Time [T<sub>RP</sub>]', 'Row Active Time [T<sub>RAS</sub>]'),
         '<children>': [{
             'SDRAM': [ 'PC-66', 'PC-100', 'PC-133' ], # http://de.wikipedia.org/wiki/Synchronous_Dynamic_Random_Access_Memory#Verschiedene_Typen
-            'DDR SDRAM': [ 'DDR-200', 'DDR-266', 'DDR-333', 'DDR-400' ],
-            'DDR2 SDRAM': ['DDR2-400', 'DDR2-533', 'DDR2-667', 'DDR2-800', 'DDR2-1066'],
-            'DDR3 SDRAM': ['DDR3-800', 'DDR3-1066', 'DDR3-1333', 'DDR3-1600', 'DDR3-1866', 'DDR3-2133'],
+            #'DDR SDRAM': [ 'DDR-200', 'DDR-266', 'DDR-333', 'DDR-400' ],
+            'DDR SDRAM': {'<import>': 'DDR_SDRAM'},
+            'DDR2 SDRAM': {'<import>': 'DDR2_SDRAM'},
+            'DDR3 SDRAM': {'<import>': 'DDR3_SDRAM'},
         }]
     },
 
@@ -239,12 +240,17 @@ subparts = [{
     'CPU': [{
         'Desktop CPU': [{
             'Pentium': [
-                { 'Pentium 4': [{
-                    'Intel Pentium 4 2.80GHz 15.2.9': {
-                        '<attrs>': { 'Vendor': 'Intel','Version': '15.2.9', 'Frequency': '2800' },
-                        '<standards>': ('32bit',)
-                    }
-                }]
+                { 'Pentium 4': {
+                    '<children>': [
+                        {
+                        'Intel Pentium 4 2.80GHz 15.2.9': {
+                            '<attrs>': { 'Vendor': 'Intel','Version': '15.2.9', 'Frequency': '2800' },
+                            '<standards>': ('32bit',)
+                        },
+                    }],
+
+                    '<import>': 'Pentium4_Willamette'
+                    },
                 },
                 'Pentium 4 Extreme Edition',
                 'Pentium 4-M',

@@ -1,5 +1,7 @@
 from bulbs.rexster import Graph, Config
 
+
+from readcsv import read_all_files
 import treetools
 import data
 from utils import ntl
@@ -67,7 +69,10 @@ def _add_element(el_dict, parent_el, element_type, root_element_node):
         g.can_have_attr_type.create(el, attr_type)
 
     for attr_type_name, attr_value in el_dict.pop('<attrs>', {}).iteritems():
-        (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
+        res = g.attr_types.index.lookup(label=attr_type_name)
+        if not res:
+            raise Exception('Could not find attr_type %s' % attr_type_name)
+        (attr_type,) = res
 
         # Try to find an exisiting attribute with the same value and attr_type
         attribute = None
@@ -90,33 +95,35 @@ def _add_element(el_dict, parent_el, element_type, root_element_node):
     for child_el_dict in el_dict.pop('<children>', []):
         _add_element(child_el_dict, el, element_type, root_element_node)
 
+    if '<import>' in el_dict:
+        name = el_dict.pop('<import>')
+
     assert not el_dict, el_dict
 
 
-def _load_root_parts():
+def _load_root_parts(csv_files):
     (root_part,) = g.root_parts.get_all()
-    parts = treetools.inflate_tree(data.parts)
+    parts = treetools.inflate_tree('parts', data.parts, csv_files)
     for part_dict in parts:
         _add_element(part_dict, None, g.parts, root_part)
 
 
-def _load_standard():
+def _load_standard(csv_files):
     (root_standard,) = g.root_standards.get_all()
-    standards = treetools.inflate_tree(data.standards)
+    standards = treetools.inflate_tree('standards', data.standards, csv_files)
     for standard_dict in standards:
         _add_element(standard_dict, None, g.standards, root_standard)
 
 
-def _load_connectors():
+def _load_connectors(csv_files):
     (root_connector,) = g.root_connectors.get_all()
-    connectors = treetools.inflate_tree(data.connectors)
+    connectors = treetools.inflate_tree('connectors', data.connectors, csv_files)
     for connector_dict in connectors:
         _add_element(connector_dict, None, g.connectors, root_connector)
 
 
-def _load_sub_parts():
-    parts = treetools.inflate_tree(data.subparts)
-
+def _load_sub_parts(csv_files):
+    parts = treetools.inflate_tree('parts', data.subparts, csv_files)
     for part_dict in parts:
         (part,) = g.parts.index.lookup(label=part_dict.pop('<name>'))
         for child_part_dict in part_dict.pop('<children>'):
@@ -125,7 +132,7 @@ def _load_sub_parts():
         assert not part_dict, part_dict
 
 
-def _load_connections():
+def _load_connections(systems):
     def _create_connection(system_part, parent_part, child_dict, connector):
         (child_part,) = g.parts.index.lookup(label=child_dict.pop('<name>'))
         connection = g.connections.create(quantity=child_dict.pop('<quantity>', 1))
@@ -152,7 +159,6 @@ def _load_connections():
         assert not part_dict, part_dict
 
 
-    systems = treetools.inflate_tree(data.systems)
     (connection_root,) = g.connection_roots.get_all()
     for system_dict in systems:
         (system_part,) = g.parts.index.lookup(label=system_dict.pop('<name>'))
@@ -177,11 +183,14 @@ def reset_db(args):
     root_connector = g.root_connectors.create()
     connection_root = g.connection_roots.create()
 
+    csv_files = read_all_files()
     _load_units()
     _load_attr_types()
-    _load_root_parts()
-    _load_standard()
-    _load_connectors()
-    _load_sub_parts()
-    _load_connections()
+    _load_root_parts(csv_files)
+    _load_standard(csv_files)
+    _load_connectors(csv_files)
+    _load_sub_parts(csv_files)
+    systems = treetools.inflate_tree('connections', data.systems)
+    _load_connections(systems)
+    _load_connections(csv_files['Pentium4_Willamette']['connections'])
     print 'Finished importing'
