@@ -84,10 +84,28 @@ app = Flask(__name__)
 
 @app.route('/units')
 def units_view():
-    unit_html = []
+    rows = []
     for unit in g.units.get_all():
-        unit_html.append(H.li(unit.name, ' [%s]'%unit.label))
-    return _render_string(base_template, heading='Attribute Types', content=H.ul(unit_html))
+        attr_types = []
+        for attr_type in ntl(unit.inV('is_unit')):
+            attr_types.append(attr_type.label)
+
+        rows.append(H.tr(
+            H.td(unit.name),
+            H.td(unit.label),
+            H.td(unit.format),
+            H.td(unit.note),
+            H.td(', '.join(attr_types)),
+        ))
+    content = H.table(class_="table table-condensed table-bordered")(
+        H.thead(
+            H.tr(
+                H.th('Name'), H.th('Unit'), H.th('Format'), H.th('Note'), H.th('Attribute types')
+            )
+        ),
+        H.tbody(rows)
+    )
+    return _render_string(base_template, heading='Attribute Types', content=content)
 
 @app.route('/attr_types')
 def attr_types():
