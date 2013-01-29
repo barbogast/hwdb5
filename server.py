@@ -307,12 +307,16 @@ def details():
 
     breadcrumb = H.ul(class_='breadcrumb')(ul)
 
-    dl = []
+    dl_dict = {}
     for attribute in ntl(element.outV('has_attribute')):
         (attr_type,) = attribute.outV('has_attr_type')
         (unit,) = attr_type.outV('is_unit')
-        dl.append(H.dt(attr_type.label))
-        dl.append(H.dd(Markup(unit.format % {'unit': attribute.value}))) #TODO: the use of Markup is unsafe here.
+        dl_dict[attr_type.label] = unit.format % {'unit': attribute.value}
+
+    dl = []
+    for name in sorted(dl_dict):
+        dl.append(H.dt(name))
+        dl.append(H.dd(Markup(dl_dict[name]))) #TODO: the use of Markup is unsafe here.
 
     if dl:
         content = H.dl(dl)
