@@ -117,7 +117,7 @@ def attributes_view():
 def parts_view():
      return _render_string(base_template,
                            heading='Parts',
-                           content=H.div(id='tree'),
+                           content=H.div(id='tree')(),
                            json_url='json?type=parts')
 
 
@@ -125,7 +125,7 @@ def parts_view():
 def standards_view():
     return _render_string(base_template,
                           heading='Standards',
-                          content=H.div(id='tree'),
+                          content=H.div(id='tree')(),
                           json_url='json?type=standards')
 
 
@@ -133,7 +133,7 @@ def standards_view():
 def connectors_view():
     return _render_string(base_template,
                           heading='Standards',
-                          content=H.div(id='tree'),
+                          content=H.div(id='tree')(),
                           json_url='json?type=connectors')
 
 
@@ -141,7 +141,7 @@ def connectors_view():
 def connections_view():
     return _render_string(base_template,
                           heading='connections',
-                          content=H.div(id='tree'),
+                          content=H.div(id='tree')(),
                           json_url='json?type=connections')
 
 
