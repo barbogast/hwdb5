@@ -156,7 +156,7 @@ def _load_connections():
     (connection_root,) = g.connection_roots.get_all()
     for system_dict in systems:
         (system_part,) = g.parts.index.lookup(label=system_dict.pop('<name>'))
-        g.is_a.create(system_part, connection_root)
+        g.has_connection.create(system_part, connection_root)
         _add_connection(system_part, system_part, system_dict)
         assert not system_dict, system_dict
 

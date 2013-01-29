@@ -245,7 +245,7 @@ def _get_connections_json():
 
     l = []
     (root,) = g.connection_roots.get_all()
-    for part in ntl(root.inV('is_a')):
+    for part in ntl(root.inV('has_connection')):
         connected_parts = []
         l.append({'title': part.label,
                   'key': part.eid,
@@ -283,9 +283,32 @@ def parts_json():
 
 @app.route('/details')
 def details():
+    def _get_parents(element):
+        l = []
+        parents = element.outV('is_a')
+        if parents:
+            (parent,) = parents
+            # Hacky hacky hacky patteng
+            if isinstance(parent, (RootConnector, RootPart, RootStandard)):
+                return l
+            l.append(parent.label)
+            l.extend(_get_parents(parent))
+        return l
+
     data_type = request.args['type']
     eid = request.args['eid']
     element = g.vertices.get(eid)
+
+    ul = []
+    for el in reversed(_get_parents(element)):
+        li = []
+        if ul:
+            li.append(H.span(class_='divider')(H.i(class_='icon-chevron-right')))
+        li.append(el)
+        ul.append(li)
+
+    breadcrumb = H.ul(class_='breadcrumb')(ul)
+
     dl = []
     for attribute in ntl(element.outV('has_attribute')):
         (attr_type,) = attribute.outV('has_attr_type')
@@ -297,7 +320,7 @@ def details():
         content = H.dl(dl)
     else:
         content = 'No attributes'
-    return str(H.div(id='tree_details')(content))
+    return str(H.div(id='tree_details')(breadcrumb, content))
 
 def export_xml(args):
     outf = open('export.graphml', 'w')

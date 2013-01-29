@@ -59,6 +59,7 @@ class BelongsTo(Relationship): label = "belongs_to"
 class ConnectedVia(Relationship): label = "connected_via"
 class ConnectedFrom(Relationship): label = "connected_from"
 class ConnectedTo(Relationship): label = "connected_to"
+class HasConnection(Relationship): label = "has_connection"
 class Implements(Relationship): label = "implements"
 class IsUnit(Relationship): label = "is_unit"
 class HasAttrType(Relationship): label = "has_attr_type"
@@ -76,7 +77,7 @@ relationships = (
     (Connector,     IsA,            RootConnector),
     (Part,          IsA,            Part),
     (Part,          IsA,            RootPart),
-    (Part,          IsA,            ConnectionRoot),
+    (Part,          HasConnection,  ConnectionRoot),
     (Part,          HasConnector,   Connector),
     (Part,          Implements,     Standard),
     (Part,          HasAttribute,   Attribute),
