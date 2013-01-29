@@ -18,12 +18,30 @@ from utils import ntl
 base_template = '''
 {% extends "base.html" %}
 {% block body %}
+  <div class="container">
+    <h1>{{heading}}</h1>
+        {{content}}
+  </div>
+{% endblock %}'''
+
+
+tree_template = '''
+{% extends "base.html" %}
+{% block body %}
     <script type="text/javascript">
         $(function(){
             $("#tree").dynatree({
                 persist: true,
+                onActivate: function(node){
+                    var url = '/details?type={{datatype}}&eid='+node.data.key
+                    $.ajax(url, {
+                        'success': function(data, textStatus, jqXHR){
+                            $('#tree_details').replaceWith(data);
+                        }
+                    })
+                },
                 initAjax: {
-                    url: "{{json_url}}",
+                    url: "json?type={{datatype}}",
                     postProcess: function(data, dataType){
                         // flask.jsonify denies sending json with an array as root
                         // for security reasons. so we unwrap it here
@@ -36,7 +54,14 @@ base_template = '''
 
   <div class="container">
     <h1>{{heading}}</h1>
-    {{content}}
+    <div class="row">
+        <div class="span4">
+            {{content}}
+        </div>
+        <div class="span5">
+            <div id="tree_details">Select an element to show the details</div>
+        </div>
+    </div>
   </div>
 {% endblock %}'''
 
@@ -115,34 +140,34 @@ def attributes_view():
 
 @app.route('/parts')
 def parts_view():
-     return _render_string(base_template,
+     return _render_string(tree_template,
                            heading='Parts',
                            content=H.div(id='tree')(),
-                           json_url='json?type=parts')
+                           datatype='parts')
 
 
 @app.route('/standards')
 def standards_view():
-    return _render_string(base_template,
+    return _render_string(tree_template,
                           heading='Standards',
                           content=H.div(id='tree')(),
-                          json_url='json?type=standards')
+                          datatype='standards')
 
 
 @app.route('/connectors')
 def connectors_view():
-    return _render_string(base_template,
+    return _render_string(tree_template,
                           heading='Standards',
                           content=H.div(id='tree')(),
-                          json_url='json?type=connectors')
+                          datatype='connectors')
 
 
 @app.route('/connections')
 def connections_view():
-    return _render_string(base_template,
+    return _render_string(tree_template,
                           heading='connections',
                           content=H.div(id='tree')(),
-                          json_url='json?type=connections')
+                          datatype='connections')
 
 
 def _get_connections_json():
@@ -211,6 +236,7 @@ def _get_element_json(parent_el):
     l = []
     for element in ntl(parent_el.inV('is_a')):
         l.append({'title': element.label,
+                  'key': element.eid,
                   'children': _get_element_json(element)})
     l.sort(key=itemgetter('title'))
     return l
@@ -231,6 +257,24 @@ def parts_json():
         raise ValueError()
     return jsonify({'children': _get_element_json(root)})
 
+
+@app.route('/details')
+def details():
+    data_type = request.args['type']
+    eid = request.args['eid']
+    element = g.vertices.get(eid)
+    dl = []
+    for attribute in ntl(element.outV('has_attribute')):
+        (attr_type,) = attribute.outV('has_attr_type')
+        (unit,) = attr_type.outV('is_unit')
+        dl.append(H.dt(attr_type.label))
+        dl.append(H.dd(Markup(unit.format % {'unit': attribute.value}))) #TODO: the use of Markup is unsafe here.
+
+    if dl:
+        content = H.dl(dl)
+    else:
+        content = 'No attributes'
+    return str(H.div(id='tree_details')(content))
 
 def export_xml(args):
     outf = open('export.graphml', 'w')
