@@ -201,7 +201,10 @@ def _get_connections_json():
             connector = has_connector.inV()
             connectors[connector.eid] = []
             for i in xrange(has_connector.quantity):
-                connector_dict = {'title': connector.label, 'isFolder': True, 'children': []}
+                connector_dict = {'title': connector.label,
+                                  'key': connector.eid,
+                                  'isFolder': True,
+                                  'children': []}
                 connectors[connector.eid].append(connector_dict)
 
         # get connected parts
@@ -218,6 +221,7 @@ def _get_connections_json():
             # get the connected part
             (childpart,) = connection.outV('connected_to')
             child_dict = {'title': childpart.label,
+                          'key': childpart.eid,
                           'children': _get_connections_for_part(childpart)}
 
             if connector_eid is None:
@@ -244,7 +248,8 @@ def _get_connections_json():
     for part in ntl(root.inV('is_a')):
         connected_parts = []
         l.append({'title': part.label,
-                  'children': _get_connections_for_part(part)
+                  'key': part.eid,
+                  'children': _get_connections_for_part(part),
         })
     l.sort(key=itemgetter('title'))
     return l
