@@ -284,14 +284,10 @@ def parts_json():
 @app.route('/details')
 def details():
     def _get_parents(element):
-        l = []
-        parents = element.outV('is_a')
-        if parents:
-            (parent,) = parents
-            # Hacky hacky hacky patteng
-            if isinstance(parent, (RootConnector, RootPart, RootStandard)):
-                return l
-            l.append(parent.label)
+        l = [element.label]
+        (parent,) = element.outV('is_a')
+        # Hacky hacky hacky patteng
+        if not isinstance(parent, (RootConnector, RootPart, RootStandard)):
             l.extend(_get_parents(parent))
         return l
 
