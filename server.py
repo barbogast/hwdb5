@@ -284,19 +284,21 @@ def parts_json():
 @app.route('/details')
 def details():
     def _get_parents(element):
-        l = [element.label]
         (parent,) = element.outV('is_a')
         # Hacky hacky hacky patteng
-        if not isinstance(parent, (RootConnector, RootPart, RootStandard)):
-            l.extend(_get_parents(parent))
-        return l
+        if isinstance(parent, (RootConnector, RootPart, RootStandard)):
+            return []
+        else:
+            l = _get_parents(parent)
+            l.append(element.label)
+            return l
 
     data_type = request.args['type']
     eid = request.args['eid']
     element = g.vertices.get(eid)
 
     ul = []
-    for el in reversed(_get_parents(element)):
+    for el in _get_parents(element):
         li = []
         if ul:
             li.append(H.span(class_='divider')(H.i(class_='icon-chevron-right')))
