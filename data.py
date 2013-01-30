@@ -114,6 +114,7 @@ parts = [{
     'Audio controller',
     'GPU',
     'Graphics card',
+    'Drive',
 ]
 
 standards = [{
@@ -315,7 +316,10 @@ subparts = [{
         'Intel B75 Express': { '<attrs>': { 'Vendor': 'Intel' } },
     }],
     'Harddrive': [{
-        'Anonymous harddrive': { '<attrs>': { 'Harddrive size': 500 } },
+        'IDE': [],
+        'SATA': [{'Anonymous harddrive': { '<attrs>': { 'Harddrive size': 500 } },}],
+        'SAS': [],
+        'SCSI': [],
     }],
     'Memory card controller': [{
         'Anonymous card reader controller': {
@@ -325,7 +329,12 @@ subparts = [{
         }
     }],
     'GPU': ['test graphics processor'],
-    'Graphics card': ['test graphics card a', 'test graphics card b'],
+    'Graphics card': [{
+        'PCI': [],
+        'AGP': [],
+        'PCIe': ['test graphics card a', 'test graphics card b'],
+    }],
+    'Drive': ['Floppy', 'CD', 'DVD', 'Blue-ray'],
 }]
 
 
