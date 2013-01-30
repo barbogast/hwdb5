@@ -92,6 +92,10 @@ def _add_element(el_dict, parent_el, element_type, root_element_node):
         (standard,) = g.standards.index.lookup(label=standard_name)
         g.implements.create(el, standard)
 
+    for conn_dict in el_dict.pop('<connectors>', []):
+        (connector,) = g.connectors.index.lookup(label=conn_dict.pop('<name>'))
+        g.has_connector.create(el, connector, quantity=conn_dict.pop('<quantity>', 1))
+
     for child_el_dict in el_dict.pop('<children>', []):
         _add_element(child_el_dict, el, element_type, root_element_node)
 
@@ -152,7 +156,6 @@ def _load_connections(systems):
 
         for conn_dict in part_dict.pop('<connectors>', []):
             (connector,) = g.connectors.index.lookup(label=conn_dict.pop('<name>'))
-            g.has_connector.create(parent_part, connector, quantity=conn_dict.pop('<quantity>', 1))
             for child_dict in conn_dict.pop('<children>', []):
                 _create_connection(system_part, parent_part, child_dict, connector)
 

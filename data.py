@@ -273,7 +273,10 @@ subparts = [{
     ]},
     'Casing': [{
         'Anonymous Mini Tower': { '<attrs>': { 'Vendor': 'Hewlett-Packard', 'Casing Size': 'Minitower' } },
-        'Anonymous Tower': { '<attrs>': { 'Width': '180', 'Length': '379', 'Height': '402', 'Color': 'black'} },
+        'Anonymous Tower': {
+            '<attrs>': { 'Width': '180', 'Length': '379', 'Height': '402', 'Color': 'black'},
+             '<connectors>': ['SD card port', 'MMC card port', 'MMCplus card port', 'xD card port', 'MS card port', 'MS PRO card port' ],
+         },
     }],
     'RAM': [{
         'DDR3 SDRAM': [{
@@ -284,7 +287,21 @@ subparts = [{
     }],
     'Motherboard': [{
         '085Ch': { '<attrs>': { 'Vendor': 'Hewlett-Packard', 'Serial number': 'CZC4301WB9', } },
-        'Anonymous Motherboard': { '<attrs>': { 'Maximal RAM capacity': 16384 } },
+        'Anonymous Motherboard': {
+            '<attrs>': { 'Maximal RAM capacity': 16384 },
+            '<connectors>': [
+                'PCIe x16 Socket',
+                'Anonymous RJ-45',
+                'SATA',
+                'CPU-Socket',
+                {
+                '240-pin DIMM (DDR3 SDRAM)': {'<quantity>': 4,},
+                'Anonymous USB 2.0 Port': { '<quantity>': 6 },
+                'Anonymous USB 3.0 Port': { '<quantity>': 2 },
+                'Audio port': { '<quantity>': 2 },
+                },
+            ]
+        },
     }],
     'Power supply': [{
         'Anonymous Power Source': { '<attrs>': { 'Power': '250'} },
@@ -316,22 +333,12 @@ systems = [{
     'Acer Aspire M1935': {
         '<no_connector>': [{
             'Anonymous Tower': {
-                '<connectors>': [
-                    'SD card port',
-                    'MMC card port',
-                    'MMCplus card port',
-                    'xD card port',
-                    'MS card port',
-                    'MS PRO card port',
-                ],
                 '<no_connector>': [
                     'Anonymous Power Source',
                     {
                     'Anonymous Motherboard': {
                         '<no_connector>': [ 'Intel B75 Express', 'Audio controller', 'Anonymous card reader controller'],
                         '<connectors>': [
-                            'PCIe x16 Socket',
-                            'Anonymous RJ-45',
                             {
                             'SATA': { '<children>': ['Anonymous harddrive'] },
                             'CPU-Socket': {
@@ -342,12 +349,8 @@ systems = [{
                                 }]
                             },
                             '240-pin DIMM (DDR3 SDRAM)': {
-                                '<quantity>': 4,
                                 '<children>': [{'Anonymous RAM': { '<quantity>': 2} }],
                             },
-                            'Anonymous USB 2.0 Port': { '<quantity>': 6 },
-                            'Anonymous USB 3.0 Port': { '<quantity>': 2 },
-                            'Audio port': { '<quantity>': 2 },
                             },
                         ]
                     }
