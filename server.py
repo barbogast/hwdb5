@@ -189,7 +189,7 @@ def connections_view():
 
 
 def _get_connections_json():
-    def _get_connections_for_part(part):
+    def _get_connections_for_part(connection_root_part, part):
         # key=connecor.eid, value=list_of_connector_dicts
         connectors = {}
 
@@ -209,6 +209,10 @@ def _get_connections_json():
 
         # get connected parts
         for connection in ntl(part.outV('connected_from')):
+            # only follow connections which belong to this connection parent
+            (this_connection_root_part,) = connection.outV('belongs_to')
+            if not this_connection_root_part == connection_root_part:
+                continue
 
             # check if the connection has a connector
             connected_via_list = connection.outE('connected_via')
@@ -222,7 +226,7 @@ def _get_connections_json():
             (childpart,) = connection.outV('connected_to')
             child_dict = {'title': childpart.label,
                           'key': childpart.eid,
-                          'children': _get_connections_for_part(childpart)}
+                          'children': _get_connections_for_part(connection_root_part, childpart)}
 
             if connector_eid is None:
                 without_connectors.append(child_dict)
@@ -249,7 +253,7 @@ def _get_connections_json():
         connected_parts = []
         l.append({'title': part.label,
                   'key': part.eid,
-                  'children': _get_connections_for_part(part),
+                  'children': _get_connections_for_part(part, part),
         })
     l.sort(key=itemgetter('title'))
     return l
