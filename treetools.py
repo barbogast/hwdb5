@@ -60,7 +60,7 @@ def inflate_tree(data_type, tree, csv_files=None):
                         inflated_el['<children>'] = _inflate_list(v)
 
                     else:
-                        raise WrongTreeError(el)
+                        raise WrongTreeError('%s %s' % (type(v), v))
 
                     inflated_elements.append(inflated_el)
 
