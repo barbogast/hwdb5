@@ -1,6 +1,3 @@
-from bulbs.rexster import Graph, Config
-
-
 from readcsv import read_all_files
 import treetools
 import data
@@ -9,7 +6,19 @@ from model import *
 
 
 def init_graph():
-    config = Config('http://localhost:8182/graphs/hwdbgraph')
+    engine = 'neo4j'
+    #engine = 'rexster'
+
+    if engine == 'rexster':
+        from bulbs.rexster import Graph, Config
+        url = 'http://localhost:8182/graphs/hwdbgraph'
+    elif engine == 'neo4j':
+        from bulbs.neo4jserver import Graph, Config
+        url = 'http://localhost:7474/db/data/'
+    else:
+        raise Exception('Unknown engine %s' % engine)
+
+    config = Config(url)
     g = Graph(config)
     g.add_proxy("root_parts", RootPart)
     g.add_proxy("parts", Part)
