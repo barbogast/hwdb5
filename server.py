@@ -224,9 +224,14 @@ def _get_connections_json():
 
             # get the connected part
             (childpart,) = connection.outV('connected_to')
-            child_dict = {'title': childpart.label,
-                          'key': childpart.eid,
-                          'children': _get_connections_for_part(connection_root_part, childpart)}
+
+            child_dict = {'title': childpart.label, 'key': childpart.eid,}
+
+            if childpart.outV('has_connection'):
+                # part is a connection root
+                child_dict['children'] = _get_connections_for_part(childpart, childpart)
+            else:
+                child_dict['children'] = _get_connections_for_part(connection_root_part, childpart)
 
             if connector_eid is None:
                 without_connectors.append(child_dict)

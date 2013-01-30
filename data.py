@@ -112,6 +112,8 @@ parts = [{
     'Memory card reader',
     'Memory card controller',
     'Audio controller',
+    'GPU',
+    'Graphics card',
 ]
 
 standards = [{
@@ -321,12 +323,17 @@ subparts = [{
                 'SD card', 'MMC card', 'MMCplus card',
                 'xD card', 'MS card', 'MS PRO card')
         }
-    }]
+    }],
+    'GPU': ['test graphics processor'],
+    'Graphics card': ['test graphics card a', 'test graphics card b'],
 }]
 
 
 
 systems = [{
+    'test graphics card a': {'<no_connector>': ['test graphics processor']},
+    'test graphics card b': {'<no_connector>': ['test graphics processor']},
+
     'HP d530 CMT(DF368A)': {
         '<no_connector>': ['Anonymous Mini Tower', '085Ch', 'Intel Pentium 4 2.80GHz 15.2.9'],
     },
@@ -340,17 +347,15 @@ systems = [{
                         '<no_connector>': [ 'Intel B75 Express', 'Audio controller', 'Anonymous card reader controller'],
                         '<connectors>': [
                             {
-                            'SATA': { '<children>': ['Anonymous harddrive'] },
-                            'CPU-Socket': {
-                                '<children>': [{
-                                    'Intel Pentium Processor G645 (2,9 GHz)': {
-                                        '<no_connector>': ['Anonymous Memory Controller']
-                                    }
-                                }]
-                            },
-                            '240-pin DIMM (DDR3 SDRAM)': {
-                                '<children>': [{'Anonymous RAM': { '<quantity>': 2} }],
-                            },
+                            'SATA': ['Anonymous harddrive'],
+                            'CPU-Socket': [{
+                                'Intel Pentium Processor G645 (2,9 GHz)': {
+                                    '<no_connector>': ['Anonymous Memory Controller']
+                                }
+                            }],
+                            '240-pin DIMM (DDR3 SDRAM)': [
+                                {'Anonymous RAM': { '<quantity>': 2} },
+                            ],
                             },
                         ]
                     }
@@ -363,7 +368,7 @@ systems = [{
             'Anonymous Mini Tower': {
                  '<no_connector>': [{
                     'Anonymous Motherboard': {
-                        '<no_connector>': ['Intel Pentium Processor G645 (2,9 GHz)']
+                        '<no_connector>': ['Intel Pentium Processor G645 (2,9 GHz)', 'test graphics card a']
                     }
                 }]
             }
