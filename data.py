@@ -357,7 +357,18 @@ systems = [{
                 }],
             }
         }]
-    }
+    },
+    'Harddrive': { #connection test
+        '<no_connector>': [{
+            'Anonymous Mini Tower': {
+                 '<no_connector>': [{
+                    'Anonymous Motherboard': {
+                        '<no_connector>': ['Intel Pentium Processor G645 (2,9 GHz)']
+                    }
+                }]
+            }
+        }]
+    },
 }]
 
 
