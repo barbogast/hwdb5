@@ -55,7 +55,7 @@ tree_template = '''
     <h1>{{heading}}</h1>
     <div class="row">
         <div class="span4">
-            {{content}}
+            <div id="tree"></div>
         </div>
         <div class="span5">
             <div id="tree_details">Select an element to show the details</div>
@@ -127,52 +127,18 @@ def attr_types():
     return render_template_string(base_template, heading='Units', content=content)
 
 
-@app.route('/schema/parts')
-def part_schema_view():
-     return render_template_string(tree_template,
-                                   heading='Part Schema',
-                                   content=H.div(id='tree')(),
-                                   datatype='part_schema')
+def _create_render_tree_func(url, heading, datatype):
+    def func():
+        return render_template_string(tree_template, heading=heading, datatype=datatype)
+    app.add_url_rule(url, url.replace('/', '_'), func)
 
-
-@app.route('/schema/standards')
-def standards_view():
-    return render_template_string(tree_template,
-                                  heading='Standards',
-                                  content=H.div(id='tree')(),
-                                  datatype='standards')
-
-
-@app.route('/schema/connectors')
-def connectors_view():
-    return render_template_string(tree_template,
-                                  heading='Standards',
-                                  content=H.div(id='tree')(),
-                                  datatype='connectors')
-
-
-@app.route('/data/parts')
-def parts_view():
-     return render_template_string(tree_template,
-                                   heading='Parts',
-                                   content=H.div(id='tree')(),
-                                   datatype='parts')
-
-
-@app.route('/data/connections')
-def connections_view():
-    return render_template_string(tree_template,
-                                  heading='connections',
-                                  content=H.div(id='tree')(),
-                                  datatype='connections')
-
-
-@app.route('/data/attributes')
-def attributes_view():
-    return render_template_string(tree_template,
-                                  heading='Attributes',
-                                  content=H.div(id='tree')(),
-                                  datatype='attributes')
+_create_render_tree_func('/schema/parts', 'Part Schema', 'part_schema')
+_create_render_tree_func('/schema/standards', 'Standards', 'standards')
+_create_render_tree_func('/schema/connectors', 'Connectors', 'connectors')
+_create_render_tree_func('/data/parts', 'Parts', 'parts')
+_create_render_tree_func('/data/connections', 'Connections', 'connections')
+_create_render_tree_func('/data/attributes', 'Attributes', 'attributes')
+_create_render_tree_func('/data/attributes', 'Attributes', 'attributes')
 
 
 def _get_connections_json():
@@ -293,7 +259,6 @@ def _get_part_schema_json(parent_el):
     l = []
     for element in parent_el.inV('is_a') or []:
         d = {'title': element.label, 'key': element.eid }
-        print element.label, element.is_schema
         if element.is_schema:
             d['children'] = _get_part_schema_json(element)
         l.append(d)
