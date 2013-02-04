@@ -114,29 +114,29 @@ def _add_element(el_dict, parent_el, element_type, root_element_node):
     assert not el_dict, el_dict
 
 
-def _load_root_parts(csv_files):
+def _load_part_schema(csv_files):
     (root_part,) = g.root_parts.get_all()
-    parts = treetools.inflate_tree('parts', data.parts, csv_files)
+    parts = treetools.inflate_tree(data.parts, csv_files, 'parts')
     for part_dict in parts:
         _add_element(part_dict, None, g.parts, root_part)
 
 
-def _load_standard(csv_files):
+def _load_standards(csv_files):
     (root_standard,) = g.root_standards.get_all()
-    standards = treetools.inflate_tree('standards', data.standards, csv_files)
+    standards = treetools.inflate_tree(data.standards, csv_files, 'standards')
     for standard_dict in standards:
         _add_element(standard_dict, None, g.standards, root_standard)
 
 
 def _load_connectors(csv_files):
     (root_connector,) = g.root_connectors.get_all()
-    connectors = treetools.inflate_tree('connectors', data.connectors, csv_files)
+    connectors = treetools.inflate_tree(data.connectors, csv_files, 'connectors')
     for connector_dict in connectors:
         _add_element(connector_dict, None, g.connectors, root_connector)
 
 
-def _load_sub_parts(csv_files):
-    parts = treetools.inflate_tree('parts', data.subparts, csv_files)
+def _load_parts(csv_files):
+    parts = treetools.inflate_tree(data.subparts, csv_files, 'parts')
     for part_dict in parts:
         (part,) = g.parts.index.lookup(label=part_dict.pop('<name>'))
         for child_part_dict in part_dict.pop('<children>'):
@@ -198,11 +198,11 @@ def reset_db(args):
     csv_files = read_all_files()
     _load_units()
     _load_attr_types()
-    _load_root_parts(csv_files)
-    _load_standard(csv_files)
+    _load_part_schema(csv_files)
+    _load_standards(csv_files)
     _load_connectors(csv_files)
-    _load_sub_parts(csv_files)
-    systems = treetools.inflate_tree('connections', data.systems)
+    _load_parts(csv_files)
+    systems = treetools.inflate_tree(data.systems, 'connections')
     _load_connections(systems)
     _load_connections(csv_files['Pentium4_Willamette']['connections'])
     print 'Finished importing'

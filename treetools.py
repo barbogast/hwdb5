@@ -18,7 +18,7 @@ def keys_have_brackets(d):
     return bool(with_brackets)
 
 
-def inflate_tree(data_type, tree, csv_files=None):
+def inflate_tree(tree, csv_files=None, csv_label=None):
     """ For examples see unit tests """
     def _inflate_list(l):
         if not isinstance(l, (list, tuple)):
@@ -53,8 +53,8 @@ def inflate_tree(data_type, tree, csv_files=None):
                             inflated_el['<connectors>'] = _inflate_list(inflated_el['<connectors>'])
                         if '<import>' in inflated_el:
                             name = inflated_el.pop('<import>')
-                            if data_type in csv_files[name]:
-                                inflated_el.setdefault('<children>', []).extend(csv_files[name][data_type])
+                            if csv_label in csv_files[name]:
+                                inflated_el.setdefault('<children>', []).extend(csv_files[name][csv_label])
 
                     elif isinstance(v, list):
                         inflated_el['<children>'] = _inflate_list(v)
