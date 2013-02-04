@@ -6,7 +6,7 @@ from collections import OrderedDict
 from operator import itemgetter, methodcaller, attrgetter
 from logging import DEBUG
 
-from flask import Flask, render_template_string, jsonify, request, Markup
+from flask import Flask, render_template_string, jsonify, request, Markup, redirect
 from flaskext.htmlbuilder import html as H
 from flask_debugtoolbar import DebugToolbarExtension
 
@@ -75,8 +75,13 @@ def index_view():
 
 @app.route('/schema/units')
 def units_view():
-    rows = []
+    units = []
     for unit in g.units.get_all():
+        units.append(unit)
+    units.sort(key=attrgetter('label'))
+
+    rows = []
+    for unit in units:
         attr_types = []
         for attr_type in unit.inV('is_unit') or []:
             attr_types.append(attr_type.label)
@@ -87,8 +92,11 @@ def units_view():
             H.td(unit.format),
             H.td(unit.note),
             H.td(', '.join(attr_types)),
+            H.td(H.input(type='submit', name='edit_%s' % unit.eid, value='Edit')),
+            H.td(H.input(type='submit', name='delete_%s' % unit.eid, value='Delete')),
         ))
-    content = H.table(class_="table table-condensed table-bordered")(
+
+    table = H.table(class_="table table-condensed table-bordered")(
         H.thead(
             H.tr(
                 H.th('Name'), H.th('Unit'), H.th('Format'), H.th('Note'), H.th('Attribute types')
@@ -96,7 +104,93 @@ def units_view():
         ),
         H.tbody(rows)
     )
+    content = H.form(method='POST', action='/schema/edit_units')(
+        table,
+        H.td(H.input(type='submit', name='new_', value='New')),
+    )
     return render_template_string(base_template, heading='Attribute Types', content=content)
+
+
+def _render_input(label, name, value, id=None, type=''):
+    if id is None:
+        id = name
+
+    return H.div(class_='control-group')(
+        H.label(class_='control-label', for_=id)(label),
+        H.div(class_='controls')(
+            H.input(name=name, value=value, id=id, type=type)
+        )
+    )
+
+
+@app.route('/schema/edit_units', methods=('GET', 'POST',))
+def edit_units():
+    def _mk_form(unit, action, eid):
+        return H.form(method='POST')(class_="form-horizontal", method='POST')(
+            _render_input('Name', name='name', value=unit.name),
+            _render_input('Unit', name='unit', value=unit.label),
+            _render_input('Format', name='format', value=unit.format),
+            _render_input('Note', name='note', value=unit.note),
+            H.input(type='submit', name='submit', value='Save'),
+            H.input(type='hidden', name='eid', value=str(eid)),
+            H.input(type='hidden', name='action', value=action),
+        )
+
+    action = request.form.get('action')
+    if not action:
+        action, eid = request.form.keys()[0].split('_')
+
+        if action == 'delete':
+            content = H.form(method='POST')(
+                'Really delete?',
+                H.br,
+                H.input(type='submit', name='delete_yes', value='Yes'),
+                H.br,
+                H.a(href='/schema/units')('Back'),
+                H.input(type='hidden', name='action', value='delete'),
+                H.input(type='hidden', name='eid', value=eid),
+            )
+            heading = 'Really delete?'
+
+        elif action == 'edit':
+            heading = 'Edit unit'
+            unit = g.vertices.get(eid)
+            content = _mk_form(unit, 'edit', eid)
+
+        elif action == 'new':
+            heading = 'Add unit'
+            unit = Unit(None)
+
+            content = _mk_form(unit, 'new', '')
+        else:
+            raise Exception('Invalid action')
+
+    else:
+        action = request.form['action']
+        eid = request.form.get('eid')
+        if action == 'delete':
+            g.vertices.delete(eid)
+            return redirect('/schema/units')
+        elif action == 'edit':
+            unit = g.vertices.get(eid)
+            unit.name = request.form['name']
+            unit.label = request.form['unit']
+            unit.format = request.form['format']
+            unit.note = request.form['note']
+            unit.save()
+            return redirect('/schema/units')
+        elif action == 'new':
+            g.units.create(
+                name=request.form['name'],
+                label=request.form['unit'],
+                format=request.form['format'],
+                note=request.form['note'],
+            )
+            return redirect('/schema/units')
+        else:
+            raise Exception('Invalid action')
+
+    return render_template_string(base_template, heading=heading, content=content)
 
 
 @app.route('/schema/attr_types')
@@ -370,7 +464,7 @@ def run_ui(args):
     app.secret_key = 'Todo'
     if True:
         toolbar = DebugToolbarExtension(app)
-    app.run(port=5001)
+    app.run(host='0.0.0.0', port=5001)
 
 
 COMMANDS = {
