@@ -41,7 +41,7 @@ tree_template = '''
                     })
                 },
                 initAjax: {
-                    url: "json?type={{datatype}}",
+                    url: "/json?type={{datatype}}",
                     postProcess: function(data, dataType){
                         // flask.jsonify denies sending json with an array as root
                         // for security reasons. so we unwrap it here
@@ -65,24 +65,16 @@ tree_template = '''
   </div>
 {% endblock %}'''
 
-menu_items = OrderedDict([
-    ('/parts', 'Parts'),
-    ('/attr_types', 'Attribute Types'),
-    ('/attributes', 'Attributes'),
-    ('/units', 'Units'),
-    ('/connections', 'Connections'),
-    ('/standards', 'Standards'),
-    ('/connectors', 'Connectors'),
-])
-
-def _render_string(tmpl_str, **kwargs):
-    """ Adds common template arguments """
-    return render_template_string(tmpl_str, menu_items=menu_items, **kwargs)
-
 
 app = Flask(__name__)
 
-@app.route('/units')
+
+@app.route('/')
+def index_view():
+    return render_template_string(base_template, heading='Index', content='')
+
+
+@app.route('/schema/units')
 def units_view():
     rows = []
     for unit in g.units.get_all():
@@ -105,9 +97,9 @@ def units_view():
         ),
         H.tbody(rows)
     )
-    return _render_string(base_template, heading='Attribute Types', content=content)
+    return render_template_string(base_template, heading='Attribute Types', content=content)
 
-@app.route('/attr_types')
+@app.route('/schema/attr_types')
 def attr_types():
     rows = []
     attr_types = sorted(g.attr_types.get_all(), key=attrgetter('label'))
@@ -133,47 +125,47 @@ def attr_types():
         ),
         H.tbody(rows)
     )
-    return _render_string(base_template, heading='Units', content=content)
+    return render_template_string(base_template, heading='Units', content=content)
 
 
-@app.route('/parts')
+@app.route('/data/parts')
 def parts_view():
-     return _render_string(tree_template,
-                           heading='Parts',
-                           content=H.div(id='tree')(),
-                           datatype='parts')
+     return render_template_string(tree_template,
+                                   heading='Parts',
+                                   content=H.div(id='tree')(),
+                                   datatype='parts')
 
 
-@app.route('/standards')
+@app.route('/schema/standards')
 def standards_view():
-    return _render_string(tree_template,
-                          heading='Standards',
-                          content=H.div(id='tree')(),
-                          datatype='standards')
+    return render_template_string(tree_template,
+                                  heading='Standards',
+                                  content=H.div(id='tree')(),
+                                  datatype='standards')
 
 
-@app.route('/connectors')
+@app.route('/schema/connectors')
 def connectors_view():
-    return _render_string(tree_template,
-                          heading='Standards',
-                          content=H.div(id='tree')(),
-                          datatype='connectors')
+    return render_template_string(tree_template,
+                                  heading='Standards',
+                                  content=H.div(id='tree')(),
+                                  datatype='connectors')
 
 
-@app.route('/connections')
+@app.route('/data/connections')
 def connections_view():
-    return _render_string(tree_template,
-                          heading='connections',
-                          content=H.div(id='tree')(),
-                          datatype='connections')
+    return render_template_string(tree_template,
+                                  heading='connections',
+                                  content=H.div(id='tree')(),
+                                  datatype='connections')
 
 
-@app.route('/attributes')
+@app.route('/data/attributes')
 def attributes_view():
-    return _render_string(tree_template,
-                          heading='Attributes',
-                          content=H.div(id='tree')(),
-                          datatype='attributes')
+    return render_template_string(tree_template,
+                                  heading='Attributes',
+                                  content=H.div(id='tree')(),
+                                  datatype='attributes')
 
 
 def _get_connections_json():

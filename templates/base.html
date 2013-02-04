@@ -32,9 +32,32 @@ body { padding-top: 40px; }
        <a class="brand" href="/">HWDB</a>
        <div class="nav-collapse" id="main-menu">
          <ul class="nav" id="main-menu-left">
-           {% for href, name in menu_items.iteritems() %}
-             <li><a href="{{href}}">{{name}}</a></li>
-           {% endfor %}
+            <li class="dropdown">
+              <a href="/admin" class="dropdown-toggle" data-toggle="dropdown">
+                Schema
+                <b class="caret"></b>
+              </a>
+
+              <ul class="dropdown-menu">
+                <li><a href="/schema/parts">Parts</a></li>
+                <li><a href="/schema/connections">Connections</a></li>
+                <li><a href="/schema/attr_types">Attribute Types</a></li>
+                <li><a href="/schema/units">Units</a></li>
+                <li><a href="/schema/standards">Standards</a></li>
+                <li><a href="/schema/connectors">Connectors</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+               <a href="/admin" class="dropdown-toggle" data-toggle="dropdown">
+                Data
+                <b class="caret"></b>
+              </a>
+              <ul class="dropdown-menu">
+                <li><a href="/data/parts">Parts</a></li>
+                <li><a href="/data/attributes">Attributes</a></li>
+                <li><a href="/data/connections">Connections</a></li>
+              </ul>
+            </li>
          </ul>
        </div>
      </div>
