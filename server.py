@@ -284,7 +284,7 @@ def _get_element_json(parent_el):
     for element in ntl(parent_el.inV('is_a')):
         l.append({'title': element.label,
                   'key': element.eid,
-                  'isFolder': element.is_schema,
+                  'isFolder': hasattr(element, 'is_schema') and element.is_schema,
                   'children': _get_element_json(element)})
     l.sort(key=itemgetter('title'))
     return l
@@ -305,22 +305,33 @@ def _get_part_schema_json(parent_el):
 @app.route('/json')
 def json():
     data_type = request.args['type']
+
     if data_type == 'parts':
         (root,) = g.root_parts.get_all()
+        result = _get_element_json(root)
+
     elif data_type == 'standards':
         (root,) = g.root_standards.get_all()
+        result = _get_element_json(root)
+
     elif data_type == 'connectors':
         (root,) = g.root_connectors.get_all()
+        result = _get_element_json(root)
+
     elif data_type == 'part_schema':
         (root,) = g.root_parts.get_all()
-        return jsonify({'children': _get_part_schema_json(root)})
+        result = _get_part_schema_json(root)
+
     elif data_type == 'connections':
-        return jsonify({'children': _get_connections_json()})
+        result = _get_connections_json()
+
     elif data_type == 'attributes':
-        return jsonify({'children': _get_attributes_json()})
+        result = _get_attributes_json()
+
     else:
         raise ValueError()
-    return jsonify({'children': _get_element_json(root)})
+
+    return jsonify({'children': result})
 
 
 @app.route('/details')
