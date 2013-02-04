@@ -32,6 +32,7 @@ def init_graph():
     g.add_proxy("connectors", Connector)
     g.add_proxy("connections", Connection)
     g.add_proxy("connection_roots", ConnectionRoot)
+    g.add_proxy("connection_schema_roots", ConnectionSchemaRoot)
 
 
     for node_from, rel, node_to in relationships:
@@ -157,6 +158,23 @@ def _load_parts(csv_files):
         assert not part_dict, part_dict
 
 
+def _load_connection_schema():
+    def _add_connection_schema(parent_part, child_part_dicts):
+        for child_part_dict in child_part_dicts:
+            (child_part,) = g.parts.index.lookup(label=child_part_dict.pop('<name>'))
+            g.can_be_contained_in.create(child_part, parent_part)
+            _add_connection_schema(child_part, child_part_dict.pop('<children>', []))
+
+    (connection_schema_root,) = g.connection_schema_roots.get_all()
+    connections = treetools.inflate_tree(data.connection_schema)
+    for root_part_dict in connections:
+        (root_part,) = g.parts.index.lookup(label=root_part_dict.pop('<name>'))
+        g.is_a.create(root_part, connection_schema_root)
+        _add_connection_schema(root_part, root_part_dict.pop('<children>'))
+
+        assert not root_part_dict
+
+
 def _load_connections(systems):
     def _create_connection(system_part, parent_part, child_dict, connector):
         (child_part,) = g.parts.index.lookup(label=child_dict.pop('<name>'))
@@ -206,6 +224,7 @@ def reset_db(args):
     root_standard = g.root_standards.create()
     root_connector = g.root_connectors.create()
     connection_root = g.connection_roots.create()
+    connection_schema_root = g.connection_schema_roots.create()
 
     csv_files = read_all_files()
     print '== Import units =='
@@ -214,6 +233,8 @@ def reset_db(args):
     _load_attr_types()
     print '== Import part schema =='
     _load_part_schema(csv_files)
+    print '== Import connection schema =='
+    _load_connection_schema()
     print '== Import standards =='
     _load_standards(csv_files)
     print '== Import connectors =='

@@ -22,7 +22,7 @@ def inflate_tree(tree, csv_files=None, csv_label=None):
     """ For examples see unit tests """
     def _inflate_list(l):
         if not isinstance(l, (list, tuple)):
-            raise Exception('Element is a %s but should be list/tuple'%type(l))
+            raise Exception('Element %r is a %s but should be list/tuple'% (l, type(l)))
 
         inflated_elements = []
         for el in l:

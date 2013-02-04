@@ -123,12 +123,30 @@ part_schema = [{
     'Drive': ['Floppy', 'CD', 'DVD', 'Blue-ray'],
     'Graphics card': ['PCI', 'AGP', 'PCIe'],
     },
-    'Flash memory',
-    'Memory card reader',
     'Memory card controller',
     'Audio controller',
     'GPU',
 ]
+
+connection_schema = [{
+    'Computer': [{
+        'Casing': [{
+            'Motherboard': [{
+                'CPU': ['CPU Core', 'Memory controller'],
+                'Graphics card': ['GPU'],
+                },
+                'Chipset',
+                'RAM',
+                'Memory card controller',
+                'Audio controller'
+            ],
+            },
+            'Power supply',
+            'Harddrive',
+            'Drive'
+        ],
+    }]
+}]
 
 standards = [{
     'CPU Instruction set': [ 'MMX', 'SSE', 'SSE2', 'SSE 4.x', '32bit', '64bit', 'XD bit', 'Smart Cache' ],

@@ -98,6 +98,7 @@ def units_view():
     )
     return render_template_string(base_template, heading='Attribute Types', content=content)
 
+
 @app.route('/schema/attr_types')
 def attr_types():
     rows = []
@@ -124,7 +125,7 @@ def attr_types():
         ),
         H.tbody(rows)
     )
-    return render_template_string(base_template, heading='Units', content=content)
+    return render_template_string(base_template, heading='Attribute Types', content=content)
 
 
 def _create_render_tree_func(url, heading, datatype):
@@ -135,9 +136,9 @@ def _create_render_tree_func(url, heading, datatype):
 _create_render_tree_func('/schema/parts', 'Part Schema', 'part_schema')
 _create_render_tree_func('/schema/standards', 'Standards', 'standards')
 _create_render_tree_func('/schema/connectors', 'Connectors', 'connectors')
+_create_render_tree_func('/schema/connections', 'Connection schema', 'connection_schema')
 _create_render_tree_func('/data/parts', 'Parts', 'parts')
 _create_render_tree_func('/data/connections', 'Connections', 'connections')
-_create_render_tree_func('/data/attributes', 'Attributes', 'attributes')
 _create_render_tree_func('/data/attributes', 'Attributes', 'attributes')
 
 
@@ -240,7 +241,6 @@ def _get_attributes_json():
         attribute_dict['title'] += ' [%s]' % len(attribute_dict['children'])
         l.append(attribute_dict)
 
-    #return _render_string(base_template, heading='Attributes', content=H.ul(sorted(attributes_li, key=str)))
     return l
 
 
@@ -258,9 +258,21 @@ def _get_element_json(parent_el):
 def _get_part_schema_json(parent_el):
     l = []
     for element in parent_el.inV('is_a') or []:
-        d = {'title': element.label, 'key': element.eid }
         if element.is_schema:
+            d = {'title': element.label, 'key': element.eid }
             d['children'] = _get_part_schema_json(element)
+            l.append(d)
+    l.sort(key=itemgetter('title'))
+    return l
+
+
+def _get_connection_schema_json(parent_el, edge_type):
+    # the function is called the first time with edge_type='is_a'
+    # all inner calls have edge_type='can_contain'
+    l = []
+    for element in parent_el.inV(edge_type) or []:
+        d = {'title': element.label, 'key': element.eid }
+        d['children'] = _get_connection_schema_json(element, 'can_be_contained_in')
         l.append(d)
     l.sort(key=itemgetter('title'))
     return l
@@ -285,6 +297,10 @@ def json():
     elif data_type == 'part_schema':
         (root,) = g.root_parts.get_all()
         result = _get_part_schema_json(root)
+
+    elif data_type == 'connection_schema':
+        (root,) = g.connection_schema_roots.get_all()
+        result = _get_connection_schema_json(root, 'is_a')
 
     elif data_type == 'connections':
         result = _get_connections_json()
