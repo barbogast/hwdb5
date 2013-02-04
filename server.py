@@ -12,7 +12,6 @@ from flask_debugtoolbar import DebugToolbarExtension
 
 from model import *
 from db import reset_db, init_graph
-from utils import ntl
 
 
 base_template = '''
@@ -79,7 +78,7 @@ def units_view():
     rows = []
     for unit in g.units.get_all():
         attr_types = []
-        for attr_type in ntl(unit.inV('is_unit')):
+        for attr_type in unit.inV('is_unit') or []:
             attr_types.append(attr_type.label)
 
         rows.append(H.tr(
@@ -107,7 +106,7 @@ def attr_types():
         (unit,) = attr_type.outV('is_unit')
 
         parts = []
-        for part in ntl(attr_type.inV('can_have_attr_type')):
+        for part in attr_type.inV('can_have_attr_type') or []:
             parts.append(part.label)
 
         rows.append(H.tr(
@@ -185,7 +184,7 @@ def _get_connections_json():
         without_connectors = []
 
         # get all connectors that his part has
-        for has_connector in ntl(part.outE('has_connector')):
+        for has_connector in part.outE('has_connector') or []:
             connector = has_connector.inV()
             connectors[connector.eid] = []
             for i in xrange(has_connector.quantity):
@@ -196,7 +195,7 @@ def _get_connections_json():
                 connectors[connector.eid].append(connector_dict)
 
         # get connected parts
-        for connection in ntl(part.outV('connected_from')):
+        for connection in part.outV('connected_from') or []:
             # only follow connections which belong to this connection parent
             (this_connection_root_part,) = connection.outV('belongs_to')
             if not this_connection_root_part == connection_root_part:
@@ -242,7 +241,7 @@ def _get_connections_json():
 
     l = []
     (root,) = g.connection_roots.get_all()
-    for part in ntl(root.inV('has_connection')):
+    for part in root.inV('has_connection') or []:
         connected_parts = []
         l.append({'title': part.label,
                   'key': part.eid,
@@ -281,7 +280,7 @@ def _get_attributes_json():
 
 def _get_element_json(parent_el):
     l = []
-    for element in ntl(parent_el.inV('is_a')):
+    for element in parent_el.inV('is_a') or []:
         l.append({'title': element.label,
                   'key': element.eid,
                   'isFolder': hasattr(element, 'is_schema') and element.is_schema,
@@ -292,7 +291,7 @@ def _get_element_json(parent_el):
 
 def _get_part_schema_json(parent_el):
     l = []
-    for element in ntl(parent_el.inV('is_a')):
+    for element in parent_el.inV('is_a') or []:
         d = {'title': element.label, 'key': element.eid }
         print element.label, element.is_schema
         if element.is_schema:
@@ -361,7 +360,7 @@ def details():
     breadcrumb = H.ul(class_='breadcrumb')(ul)
 
     dl_dict = {}
-    for attribute in ntl(element.outV('has_attribute')):
+    for attribute in element.outV('has_attribute') or []:
         (attr_type,) = attribute.outV('has_attr_type')
         (unit,) = attr_type.outV('is_unit')
         dl_dict[attr_type.label] = unit.format % {'unit': attribute.value}

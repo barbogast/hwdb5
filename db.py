@@ -1,7 +1,6 @@
 from readcsv import read_all_files
 import treetools
 import data
-from utils import ntl
 from model import *
 
 
@@ -97,7 +96,7 @@ def _add_element(el_dict, parent_el, element_type, root_element_node, extra_prop
 
             # Try to find an exisiting attribute with the same value and attr_type
             attribute = None
-            for attribute_2 in ntl(g.attributes.index.lookup('value', attr_value)):
+            for attribute_2 in g.attributes.index.lookup('value', attr_value) or []:
                 (attr_type_2,) = attribute_2.outV('has_attr_type')
                 if attr_type == attr_type_2:
                     attribute = attribute_2
