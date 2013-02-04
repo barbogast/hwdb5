@@ -1,0 +1,21 @@
+Flask==0.9
+Flask-DebugToolbar==0.7.1
+Flask-HTMLBuilder==0.4
+Jinja2==2.6
+PyYAML==3.10
+Werkzeug==0.8.3
+argparse==1.2.1
+blinker==1.2
+
+## FIXME: could not find svn URL in dependency_links for this package:
+#bulbs==0.3.11-20130204
+git+https://github.com/Koblaid/bulbs.git@add_bool_type # branch with a Bool type
+
+distribute==0.6.24
+httplib2==0.7.7
+ipython==0.13.1
+omnijson==0.1.2
+python-dateutil==1.5
+pytz==2012h
+six==1.2.0
+wsgiref==0.1.2
