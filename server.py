@@ -135,26 +135,6 @@ def attr_types():
     )
     return _render_string(base_template, heading='Units', content=content)
 
-@app.route('/attributes')
-def attributes_view():
-    attributes_li = []
-    for attribute in g.attributes.get_all():
-        parts_li = []
-        for part in attribute.inV('has_attribute'):
-            parts_li.append(H.li(part.label))
-
-        if len(parts_li) > 1:
-            (attr_type,) = attribute.outV('has_attr_type')
-            (unit,) = attr_type.outV('is_unit')
-
-            attributes_li.append(
-                H.ul(
-                    attr_type.label, ': ',
-                    H.strong(attribute.value, ' ', Markup(unit.name)),
-                    H.ul( sorted(parts_li, key=str))
-                )
-            )
-    return _render_string(base_template, heading='Attributes', content=H.ul(sorted(attributes_li, key=str)))
 
 @app.route('/parts')
 def parts_view():
@@ -186,6 +166,14 @@ def connections_view():
                           heading='connections',
                           content=H.div(id='tree')(),
                           datatype='connections')
+
+
+@app.route('/attributes')
+def attributes_view():
+    return _render_string(tree_template,
+                          heading='Attributes',
+                          content=H.div(id='tree')(),
+                          datatype='attributes')
 
 
 def _get_connections_json():
@@ -264,6 +252,33 @@ def _get_connections_json():
     return l
 
 
+def _get_attributes_json():
+    attr_types = {}
+    for attribute in g.attributes.get_all():
+        parts = []
+        for part in attribute.inV('has_attribute'):
+            parts.append(part.label)
+        parts.sort()
+
+        if len(parts) > 1:
+            (attr_type,) = attribute.outV('has_attr_type')
+            (unit,) = attr_type.outV('is_unit')
+
+            title = unit.format % {'unit': attribute.value} + ' [%s]' % len(parts)
+            attr_type_dict = attr_types.setdefault(attr_type.label, {'title': attr_type.label, 'children': []})
+            attr_type_dict['children'].append({'title': title, 'children': parts})
+
+    l = []
+    for key in sorted(attr_types):
+        attribute_dict = attr_types[key]
+        attribute_dict['children'].sort(key=itemgetter('title'))
+        attribute_dict['title'] += ' [%s]' % len(attribute_dict['children'])
+        l.append(attribute_dict)
+
+    #return _render_string(base_template, heading='Attributes', content=H.ul(sorted(attributes_li, key=str)))
+    return l
+
+
 def _get_element_json(parent_el):
     l = []
     for element in ntl(parent_el.inV('is_a')):
@@ -275,7 +290,7 @@ def _get_element_json(parent_el):
 
 
 @app.route('/json')
-def parts_json():
+def json():
     data_type = request.args['type']
     if data_type == 'parts':
         (root,) = g.root_parts.get_all()
@@ -285,6 +300,8 @@ def parts_json():
         (root,) = g.root_connectors.get_all()
     elif data_type == 'connections':
         return jsonify({'children': _get_connections_json()})
+    elif data_type == 'attributes':
+        return jsonify({'children': _get_attributes_json()})
     else:
         raise ValueError()
     return jsonify({'children': _get_element_json(root)})
