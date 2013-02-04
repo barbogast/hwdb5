@@ -83,7 +83,7 @@ attr_types = [
 ]
 
 
-parts = [{
+part_schema = [{
     'Memory controller': { '<note>': 'Seems to be integrated into a cpu (pc alt)',
                            '<attr_types>': ['Memory channels']},
     'CPU Core': { '<attr_types>': [
@@ -95,9 +95,14 @@ parts = [{
             "Release date", "Release price", "Part number", "Source", "Number of cores",
             "S-Spec", "Vendor", "Hyperthreading", "Version", "Maximal power consumption",
             "L1 cache", "L2 cache", "L3 cache", "Front side bus"
-    ]},
-    'Computer': { '<note>': 'Part to safe fix compilations of parts, i.e. PCs, Laptops, Servers, ...)',
-                    '<attr_types>': [ "Modified", "Vendor", "Serial number" ]},
+        ],
+        '<children>': ['Desktop CPU'],
+    },
+    'Computer': {
+        '<note>': 'Part to safe fix compilations of parts, i.e. PCs, Laptops, Servers, ...)',
+        '<attr_types>': [ "Modified", "Vendor", "Serial number" ],
+        '<children>': ['Desktop', 'Laptop', 'Server'],
+    },
     'Casing': { '<note>': 'Computer casing',
                 '<attr_types>': [ "Vendor", "Casing Size", "Color", "Width", "Length", "Height" ]
     },
@@ -105,16 +110,24 @@ parts = [{
     #'DIMM': { '<attr_types>': [ "Pin count", "Source" ] },
     'Power supply': { '<attr_types>': [ 'Power' ] },
     'Chipset': { '<attr_types>': ["Vendor"] },
-    'Harddrive': { '<attr_types>': ["Harddrive size"] },
-    'RAM':  { '<attr_types>': ["RAM Size"] },
+    'Harddrive': {
+        '<attr_types>': ["Harddrive size"],
+        '<children>': ['IDE', 'SATA', 'SAS', 'SCSI'],
+    },
+    'RAM':  {
+        '<attr_types>': ["RAM Size"],
+        '<children>': [{
+            'DDR3 SDRAM': ['DDR3-1333']
+        }],
+    },
+    'Drive': ['Floppy', 'CD', 'DVD', 'Blue-ray'],
+    'Graphics card': ['PCI', 'AGP', 'PCIe'],
     },
     'Flash memory',
     'Memory card reader',
     'Memory card controller',
     'Audio controller',
     'GPU',
-    'Graphics card',
-    'Drive',
 ]
 
 standards = [{
@@ -147,9 +160,9 @@ standards = [{
 
     'CPU Socket': [ 'Socket 1155', 'Socket 423', 'Socket 478' ],
     'PCI': [ 'PCI 1.0', 'PCI 2.0', 'PCI 2.1', 'PCI 2.2', 'PCI 2.3', 'PCI 3.0' ], # http://en.wikipedia.org/wiki/Conventional_PCI#History
-    'PCI Express': [ 'PCIe 1.0a', 'PCIe 1.1', 'PCIe 2.0', 'PCIe 2.1', 'PCI 3.0' ], # http://en.wikipedia.org/wiki/PCI_Express#History_and_revisions
+    'PCI Express': [ 'PCIe 1.0a', 'PCIe 1.1', 'PCIe 2.0', 'PCIe 2.1', 'PCIe 3.0' ], # http://en.wikipedia.org/wiki/PCI_Express#History_and_revisions
     'USB': [ 'USB 1', 'USB 2.0', 'USB 3.0' ],
-    'SATA': [ 'SATA 1.0', 'SATA 2.0', 'SATA 3.0', 'SATA 3.1', 'SATA 3.2' ],
+    'SATA Standard': [ 'SATA 1.0', 'SATA 2.0', 'SATA 3.0', 'SATA 3.1', 'SATA 3.2' ],
     'Memory card': [ 'SD card', 'MMC card', 'MMCplus card', 'xD card', 'MS card', 'MS PRO card' ],
     },
     'AGP',
@@ -206,14 +219,14 @@ connectors = [{
                 'Anonymous RJ-45':  { '<standards>': ( 'Ethernet (10Mbits)', 'Fast Ethernet (100Mbits)', 'Gigabit Ethernet (1000Mbits)') },
             }],
             },
-            'SATA', 'Audio port', 'SD card port', 'MMC card port', 'MMCplus card port',
+            'SATA port', 'Audio port', 'SD card port', 'MMC card port', 'MMCplus card port',
             'xD card port', 'MS card port', 'MS PRO card port'
         ]
     },
 }]
 
 
-subparts = [{
+parts = [{
     'CPU Core': [
         'Intel 80486', 'P5', 'P6', 'Intel Core', 'Enhanced Pentium M',
         'Nehalem', 'Penryn', 'Sandy Bridge', 'Westmere', 'Ivy Bridge', 'Haswell Bridge',
@@ -265,15 +278,12 @@ subparts = [{
             },
         }],
     }],
-    'Computer': {
-        '<children>': [
-            { 'Desktop': [{
-                'HP d530 CMT(DF368A)': { '<attrs>': { 'Vendor': 'Hewlett-Packard', 'Serial number': 'CZC4301WB9', }},
-                'Acer Aspire M1935': { '<attrs>': { 'Vendor': 'Acer' } },
-            }]},
-            'Laptop',
-            'Server'
-    ]},
+    'Computer': [{
+        'Desktop': [{
+            'HP d530 CMT(DF368A)': { '<attrs>': { 'Vendor': 'Hewlett-Packard', 'Serial number': 'CZC4301WB9', }},
+            'Acer Aspire M1935': { '<attrs>': { 'Vendor': 'Acer' } },
+        }],
+    }],
     'Casing': [{
         'Anonymous Mini Tower': { '<attrs>': { 'Vendor': 'Hewlett-Packard', 'Casing Size': 'Minitower' } },
         'Anonymous Tower': {
@@ -295,7 +305,7 @@ subparts = [{
             '<connectors>': [
                 'PCIe x16 Socket',
                 'Anonymous RJ-45',
-                'SATA',
+                'SATA port',
                 'CPU-Socket',
                 {
                 '240-pin DIMM (DDR3 SDRAM)': {'<quantity>': 4,},
@@ -316,10 +326,7 @@ subparts = [{
         'Intel B75 Express': { '<attrs>': { 'Vendor': 'Intel' } },
     }],
     'Harddrive': [{
-        'IDE': [],
         'SATA': [{'Anonymous harddrive': { '<attrs>': { 'Harddrive size': 500 } },}],
-        'SAS': [],
-        'SCSI': [],
     }],
     'Memory card controller': [{
         'Anonymous card reader controller': {
@@ -330,11 +337,8 @@ subparts = [{
     }],
     'GPU': ['test graphics processor'],
     'Graphics card': [{
-        'PCI': [],
-        'AGP': [],
         'PCIe': ['test graphics card a', 'test graphics card b'],
     }],
-    'Drive': ['Floppy', 'CD', 'DVD', 'Blue-ray'],
 }]
 
 
@@ -356,7 +360,7 @@ systems = [{
                         '<no_connector>': [ 'Intel B75 Express', 'Audio controller', 'Anonymous card reader controller'],
                         '<connectors>': [
                             {
-                            'SATA': ['Anonymous harddrive'],
+                            'SATA port': ['Anonymous harddrive'],
                             'CPU-Socket': [{
                                 'Intel Pentium Processor G645 (2,9 GHz)': {
                                     '<no_connector>': ['Anonymous Memory Controller']

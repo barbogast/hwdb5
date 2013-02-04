@@ -128,12 +128,12 @@ def attr_types():
     return render_template_string(base_template, heading='Units', content=content)
 
 
-@app.route('/data/parts')
-def parts_view():
+@app.route('/schema/parts')
+def part_schema_view():
      return render_template_string(tree_template,
-                                   heading='Parts',
+                                   heading='Part Schema',
                                    content=H.div(id='tree')(),
-                                   datatype='parts')
+                                   datatype='part_schema')
 
 
 @app.route('/schema/standards')
@@ -150,6 +150,14 @@ def connectors_view():
                                   heading='Standards',
                                   content=H.div(id='tree')(),
                                   datatype='connectors')
+
+
+@app.route('/data/parts')
+def parts_view():
+     return render_template_string(tree_template,
+                                   heading='Parts',
+                                   content=H.div(id='tree')(),
+                                   datatype='parts')
 
 
 @app.route('/data/connections')
@@ -276,7 +284,20 @@ def _get_element_json(parent_el):
     for element in ntl(parent_el.inV('is_a')):
         l.append({'title': element.label,
                   'key': element.eid,
+                  'isFolder': element.is_schema,
                   'children': _get_element_json(element)})
+    l.sort(key=itemgetter('title'))
+    return l
+
+
+def _get_part_schema_json(parent_el):
+    l = []
+    for element in ntl(parent_el.inV('is_a')):
+        d = {'title': element.label, 'key': element.eid }
+        print element.label, element.is_schema
+        if element.is_schema:
+            d['children'] = _get_part_schema_json(element)
+        l.append(d)
     l.sort(key=itemgetter('title'))
     return l
 
@@ -290,6 +311,9 @@ def json():
         (root,) = g.root_standards.get_all()
     elif data_type == 'connectors':
         (root,) = g.root_connectors.get_all()
+    elif data_type == 'part_schema':
+        (root,) = g.root_parts.get_all()
+        return jsonify({'children': _get_part_schema_json(root)})
     elif data_type == 'connections':
         return jsonify({'children': _get_connections_json()})
     elif data_type == 'attributes':

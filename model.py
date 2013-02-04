@@ -1,5 +1,5 @@
 from bulbs.model import Node, Relationship
-from bulbs.property import String, Integer, DateTime
+from bulbs.property import String, Integer, DateTime, Bool
 
 
 class BaseNode(Node):
@@ -18,6 +18,7 @@ class RootPart(BaseNode):
 
 class Part(LabeledNode):
     element_type = "part"
+    is_schema = Bool(nullable=False, default=False)
 
 class Connector(LabeledNode):
     element_type = "connector"

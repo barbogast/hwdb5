@@ -60,65 +60,78 @@ def _load_attr_types():
         g.is_unit.create(attr_type_obj, unit)
 
 
-def _add_element(el_dict, parent_el, element_type, root_element_node):
+def _add_element(el_dict, parent_el, element_type, root_element_node, extra_properties={}):
     assert 'attr_types' not in el_dict, 'attr_types should be on the first level elements of the part tree (or should they?)'
-    d = {
-        'label': el_dict.pop('<name>'),
-        'note': el_dict.pop('<note>', None),
-    }
-    el = element_type.create(**d)
+    label = el_dict.pop('<name>')
 
-    if parent_el is None:
-        g.is_a.create(el, root_element_node)
+    # Check if element is already present
+    result = element_type.index.lookup(label=label)
+    if result:
+        (el,) = result
+        if not hasattr(el, 'is_schema' or not el.is_schema):
+            raise Exception('Element %r already present' % label)
+
     else:
-        g.is_a.create(el, parent_el)
 
-    for attr_type_name in el_dict.pop('<attr_types>', []):
-        (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
-        g.can_have_attr_type.create(el, attr_type)
+        d = {
+            'label': label,
+            'note': el_dict.pop('<note>', None),
+        }
+        d.update(extra_properties)
+        el = element_type.create(**d)
 
-    for attr_type_name, attr_value in el_dict.pop('<attrs>', {}).iteritems():
-        res = g.attr_types.index.lookup(label=attr_type_name)
-        if not res:
-            raise Exception('Could not find attr_type %s' % attr_type_name)
-        (attr_type,) = res
+        if parent_el is None:
+            g.is_a.create(el, root_element_node)
+        else:
+            g.is_a.create(el, parent_el)
 
-        # Try to find an exisiting attribute with the same value and attr_type
-        attribute = None
-        for attribute_2 in ntl(g.attributes.index.lookup('value', attr_value)):
-            (attr_type_2,) = attribute_2.outV('has_attr_type')
-            if attr_type == attr_type_2:
-                attribute = attribute_2
-                break
+        for attr_type_name in el_dict.pop('<attr_types>', []):
+            (attr_type,) = g.attr_types.index.lookup(label=attr_type_name)
+            g.can_have_attr_type.create(el, attr_type)
 
-        if not attribute:
-            attribute = g.attributes.create(value=attr_value)
-            g.has_attr_type.create(attribute, attr_type)
+        for attr_type_name, attr_value in el_dict.pop('<attrs>', {}).iteritems():
+            res = g.attr_types.index.lookup(label=attr_type_name)
+            if not res:
+                raise Exception('Could not find attr_type %s' % attr_type_name)
+            (attr_type,) = res
 
-        g.has_attribute.create(el, attribute)
+            # Try to find an exisiting attribute with the same value and attr_type
+            attribute = None
+            for attribute_2 in ntl(g.attributes.index.lookup('value', attr_value)):
+                (attr_type_2,) = attribute_2.outV('has_attr_type')
+                if attr_type == attr_type_2:
+                    attribute = attribute_2
+                    break
 
-    for standard_name in el_dict.pop('<standards>', []):
-        (standard,) = g.standards.index.lookup(label=standard_name)
-        g.implements.create(el, standard)
+            if not attribute:
+                attribute = g.attributes.create(value=attr_value)
+                g.has_attr_type.create(attribute, attr_type)
 
-    for conn_dict in el_dict.pop('<connectors>', []):
-        (connector,) = g.connectors.index.lookup(label=conn_dict.pop('<name>'))
-        g.has_connector.create(el, connector, quantity=conn_dict.pop('<quantity>', 1))
+            g.has_attribute.create(el, attribute)
+
+        for standard_name in el_dict.pop('<standards>', []):
+            (standard,) = g.standards.index.lookup(label=standard_name)
+            g.implements.create(el, standard)
+
+        for conn_dict in el_dict.pop('<connectors>', []):
+            conn_label = conn_dict.pop('<name>')
+            result = g.connectors.index.lookup(label=conn_label)
+            if not result:
+                raise Exception('Could not find connector %r to connecto %r' % (conn_label, el.label))
+            (connector,) = result
+            g.has_connector.create(el, connector, quantity=conn_dict.pop('<quantity>', 1))
 
     for child_el_dict in el_dict.pop('<children>', []):
-        _add_element(child_el_dict, el, element_type, root_element_node)
-
-    if '<import>' in el_dict:
-        name = el_dict.pop('<import>')
+        _add_element(child_el_dict, el, element_type, root_element_node, extra_properties)
 
     assert not el_dict, el_dict
 
 
 def _load_part_schema(csv_files):
     (root_part,) = g.root_parts.get_all()
-    parts = treetools.inflate_tree(data.parts, csv_files, 'parts')
+    parts = treetools.inflate_tree(data.part_schema, csv_files, 'parts')
     for part_dict in parts:
-        _add_element(part_dict, None, g.parts, root_part)
+        _add_element(part_dict, None, g.parts, root_part, extra_properties={'is_schema': True})
 
 
 def _load_standards(csv_files):
@@ -136,7 +149,7 @@ def _load_connectors(csv_files):
 
 
 def _load_parts(csv_files):
-    parts = treetools.inflate_tree(data.subparts, csv_files, 'parts')
+    parts = treetools.inflate_tree(data.parts, csv_files, 'parts')
     for part_dict in parts:
         (part,) = g.parts.index.lookup(label=part_dict.pop('<name>'))
         for child_part_dict in part_dict.pop('<children>'):
@@ -196,13 +209,21 @@ def reset_db(args):
     connection_root = g.connection_roots.create()
 
     csv_files = read_all_files()
+    print '== Import units =='
     _load_units()
+    print '== Import attr types =='
     _load_attr_types()
+    print '== Import part schema =='
     _load_part_schema(csv_files)
+    print '== Import standards =='
     _load_standards(csv_files)
+    print '== Import connectors =='
     _load_connectors(csv_files)
+    print '== Import parts =='
     _load_parts(csv_files)
+    print '== Import systems from data.py =='
     systems = treetools.inflate_tree(data.systems, 'connections')
     _load_connections(systems)
+    print '== Import systems from csv=='
     _load_connections(csv_files['Pentium4_Willamette']['connections'])
     print 'Finished importing'
