@@ -92,8 +92,8 @@ def units_view():
             H.td(unit.format),
             H.td(unit.note),
             H.td(', '.join(attr_types)),
-            H.td(H.input(type='submit', name='edit_%s' % unit.eid, value='Edit')),
-            H.td(H.input(type='submit', name='delete_%s' % unit.eid, value='Delete')),
+            H.td(H.button(type='submit', name='edit_form', value=str(unit.eid))('Edit')),
+            H.td(H.button(type='submit', name='delete_form', value=str(unit.eid))('Delete')),
         ))
 
     table = H.table(class_="table table-condensed table-bordered")(
@@ -106,7 +106,7 @@ def units_view():
     )
     content = H.form(method='POST', action='/schema/edit_units')(
         table,
-        H.td(H.input(type='submit', name='new_', value='New')),
+        H.td(H.button(type='submit', name='new_form', value='new')('New')),
     )
     return render_template_string(base_template, heading='Attribute Types', content=content)
 
@@ -131,66 +131,59 @@ def edit_units():
             _render_input('Unit', name='unit', value=unit.label),
             _render_input('Format', name='format', value=unit.format),
             _render_input('Note', name='note', value=unit.note),
-            H.input(type='submit', name='submit', value='Save'),
+            H.button(type='submit', name='action', value=action)('Save'),
             H.input(type='hidden', name='eid', value=str(eid)),
-            H.input(type='hidden', name='action', value=action),
         )
 
-    action = request.form.get('action')
-    if not action:
-        action, eid = request.form.keys()[0].split('_')
 
-        if action == 'delete':
-            content = H.form(method='POST')(
-                'Really delete?',
-                H.br,
-                H.input(type='submit', name='delete_yes', value='Yes'),
-                H.br,
-                H.a(href='/schema/units')('Back'),
-                H.input(type='hidden', name='action', value='delete'),
-                H.input(type='hidden', name='eid', value=eid),
-            )
-            heading = 'Really delete?'
+    if 'delete_form' in request.form:
+        eid = request.form['delete_form']
+        unit = g.vertices.get(eid)
+        content = H.form(method='POST')(
+            'Really delete "%s"?' % unit.name, H.br,
+            H.button(type='submit', name='action', value='delete')('Yes'), H.br,
+            H.a(href='/schema/units')('Back'),
+            H.input(type='hidden', name='eid', value=eid),
+        )
+        return render_template_string(base_template, heading='Really delete?', content=content)
 
-        elif action == 'edit':
-            heading = 'Edit unit'
-            unit = g.vertices.get(eid)
-            content = _mk_form(unit, 'edit', eid)
+    elif 'edit_form' in request.form:
+        eid = request.form['edit_form']
+        unit = g.vertices.get(eid)
+        content = _mk_form(unit, 'edit', eid)
+        return render_template_string(base_template, heading='Edit unit', content=content)
 
-        elif action == 'new':
-            heading = 'Add unit'
-            unit = Unit(None)
+    elif 'new_form' in request.form:
+        content = _mk_form(Unit(None), 'new', '')
+        return render_template_string(base_template, heading='Add unit', content=content)
 
-            content = _mk_form(unit, 'new', '')
-        else:
-            raise Exception('Invalid action')
+
+    elif request.form.get('action') == 'delete':
+        eid = request.form['eid']
+        g.vertices.delete(eid)
+        return redirect('/schema/units')
+
+    elif request.form.get('action') == 'edit':
+        eid = request.form['eid']
+        unit = g.vertices.get(eid)
+        unit.name = request.form['name']
+        unit.label = request.form['unit']
+        unit.format = request.form['format']
+        unit.note = request.form['note']
+        unit.save()
+        return redirect('/schema/units')
+
+    elif request.form.get('action') == 'new':
+        g.units.create(
+            name=request.form['name'],
+            label=request.form['unit'],
+            format=request.form['format'],
+            note=request.form['note'],
+        )
+        return redirect('/schema/units')
 
     else:
-        action = request.form['action']
-        eid = request.form.get('eid')
-        if action == 'delete':
-            g.vertices.delete(eid)
-            return redirect('/schema/units')
-        elif action == 'edit':
-            unit = g.vertices.get(eid)
-            unit.name = request.form['name']
-            unit.label = request.form['unit']
-            unit.format = request.form['format']
-            unit.note = request.form['note']
-            unit.save()
-            return redirect('/schema/units')
-        elif action == 'new':
-            g.units.create(
-                name=request.form['name'],
-                label=request.form['unit'],
-                format=request.form['format'],
-                note=request.form['note'],
-            )
-            return redirect('/schema/units')
-        else:
-            raise Exception('Invalid action')
-
-    return render_template_string(base_template, heading=heading, content=content)
+        raise Exception('Invalid action')
 
 
 @app.route('/schema/attr_types')
