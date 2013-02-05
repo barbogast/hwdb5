@@ -78,7 +78,7 @@ def units_view():
     units = []
     for unit in g.units.get_all():
         units.append(unit)
-    units.sort(key=attrgetter('label'))
+    units.sort(key=lambda u: u.label.lower())
 
     rows = []
     for unit in units:
@@ -108,7 +108,7 @@ def units_view():
         table,
         H.td(H.button(type='submit', name='new_form', value='new')('New')),
     )
-    return render_template_string(base_template, heading='Attribute Types', content=content)
+    return render_template_string(base_template, heading='Units', content=content)
 
 
 def _render_input(label, name, value, id=None, type=''):
@@ -139,12 +139,22 @@ def edit_units():
     if 'delete_form' in request.form:
         eid = request.form['delete_form']
         unit = g.vertices.get(eid)
-        content = H.form(method='POST')(
-            'Really delete "%s"?' % unit.name, H.br,
-            H.button(type='submit', name='action', value='delete')('Yes'), H.br,
-            H.a(href='/schema/units')('Back'),
-            H.input(type='hidden', name='eid', value=eid),
-        )
+        attr_types = []
+        for attr_type in unit.inV('is_unit') or []:
+            attr_types.append(attr_type.label)
+
+        if attr_types:
+            content = H.div(
+                'Cannot delete unit, its used for %s' % ', '.join(attr_types),
+                H.br, H.a(href='/schema/units')('Back'),
+            )
+        else:
+            content = H.form(method='POST')(
+                'Really delete "%s"?' % unit.name, H.br,
+                H.button(type='submit', name='action', value='delete')('Yes'), H.br,
+                H.a(href='/schema/units')('Back'),
+                H.input(type='hidden', name='eid', value=eid),
+            )
         return render_template_string(base_template, heading='Really delete?', content=content)
 
     elif 'edit_form' in request.form:
