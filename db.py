@@ -19,24 +19,11 @@ def init_graph():
 
     config = Config(url)
     g = Graph(config)
-    g.add_proxy("root_parts", RootPart)
-    g.add_proxy("parts", Part)
-    g.add_proxy("root_standards", RootStandard)
-    g.add_proxy("standards", Standard)
-    g.add_proxy("connections", Connection)
-    g.add_proxy("attr_types", AttrType)
-    g.add_proxy("companies", Company)
-    g.add_proxy("units", Unit)
-    g.add_proxy("attributes", Attribute)
-    g.add_proxy("root_connectors", RootConnector)
-    g.add_proxy("connectors", Connector)
-    g.add_proxy("connections", Connection)
-    g.add_proxy("connection_roots", ConnectionRoot)
-    g.add_proxy("connection_schema_roots", ConnectionSchemaRoot)
+    for node_cls in node_classes:
+        g.add_proxy(node_cls.proxy_name, node_cls)
 
-
-    for node_from, rel, node_to in relationships:
-        g.add_proxy(rel.label, rel)
+    for rel_cls in relationship_classes:
+        g.add_proxy(rel_cls.label, rel_cls)
     return g
 
 

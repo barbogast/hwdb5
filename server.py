@@ -111,41 +111,40 @@ def units_view():
     return render_template_string(base_template, heading='Units', content=content)
 
 
-def _render_input(label, name, value, id=None, type=''):
+def _render_input(values, label, name, id=None, type=''):
     if id is None:
         id = name
 
     return H.div(class_='control-group')(
         H.label(class_='control-label', for_=id)(label),
         H.div(class_='controls')(
-            H.input(name=name, value=value, id=id, type=type)
+            H.input(name=name, value=values.get(name), id=id, type=type)
         )
+    )
+
+
+def _mk_form(unit, action, msg=''):
+    return H.form(method='POST')(class_="form-horizontal", method='POST')(
+        msg,
+        _render_input(unit, 'Name', name='name'),
+        _render_input(unit, 'Unit', name='label'),
+        _render_input(unit, 'Format', name='format'),
+        _render_input(unit, 'Note', name='note'),
+        H.button(type='submit', name='action', value=action)('Save'),
+        H.input(type='hidden', name='eid', value=str(unit.get('eid'))),
     )
 
 
 @app.route('/schema/edit_units', methods=('GET', 'POST',))
 def edit_units():
-    def _mk_form(unit, action, eid):
-        return H.form(method='POST')(class_="form-horizontal", method='POST')(
-            _render_input('Name', name='name', value=unit.name),
-            _render_input('Unit', name='unit', value=unit.label),
-            _render_input('Format', name='format', value=unit.format),
-            _render_input('Note', name='note', value=unit.note),
-            H.button(type='submit', name='action', value=action)('Save'),
-            H.input(type='hidden', name='eid', value=str(eid)),
-        )
-
-
     if 'delete_form' in request.form:
         eid = request.form['delete_form']
-        unit = g.vertices.get(eid)
-        attr_types = []
-        for attr_type in unit.inV('is_unit') or []:
-            attr_types.append(attr_type.label)
+        unit = Unit.from_eid(eid)
+        attr_types = unit.get_attr_types()
 
         if attr_types:
             content = H.div(
-                'Cannot delete unit, its used for %s' % ', '.join(attr_types),
+                'Cannot delete unit, its used for %s' % ', '.join((a.label for a in attr_types)),
                 H.br, H.a(href='/schema/units')('Back'),
             )
         else:
@@ -158,38 +157,35 @@ def edit_units():
         return render_template_string(base_template, heading='Really delete?', content=content)
 
     elif 'edit_form' in request.form:
-        eid = request.form['edit_form']
-        unit = g.vertices.get(eid)
-        content = _mk_form(unit, 'edit', eid)
+        unit = Unit.from_eid(request.form['edit_form'])
+        content = _mk_form(unit, 'edit')
         return render_template_string(base_template, heading='Edit unit', content=content)
 
     elif 'new_form' in request.form:
-        content = _mk_form(Unit(None), 'new', '')
+        content = _mk_form({}, 'new')
         return render_template_string(base_template, heading='Add unit', content=content)
 
 
     elif request.form.get('action') == 'delete':
-        eid = request.form['eid']
-        g.vertices.delete(eid)
+        unit = Unit.from_eid(request.form['eid'])
+        unit.delete()
         return redirect('/schema/units')
 
     elif request.form.get('action') == 'edit':
-        eid = request.form['eid']
-        unit = g.vertices.get(eid)
-        unit.name = request.form['name']
-        unit.label = request.form['unit']
-        unit.format = request.form['format']
-        unit.note = request.form['note']
+        unit = Unit.from_eid(request.form['eid'])
+        if request.form['label'] != unit.label and Unit.get_count_from_label(request.form['label']) > 0:
+            content = _mk_form(request.form, 'edit', 'Unit name already taken')
+            return render_template_string(base_template, heading='Edit unit', content=content)
+        unit.update(request.form)
         unit.save()
         return redirect('/schema/units')
 
     elif request.form.get('action') == 'new':
-        g.units.create(
-            name=request.form['name'],
-            label=request.form['unit'],
-            format=request.form['format'],
-            note=request.form['note'],
-        )
+        if Unit.get_count_from_label(request.form['label']) > 0:
+            content = _mk_form(request.form, 'new', 'Unit with this unit already present')
+            return render_template_string(base_template, heading='Add unit', content=content)
+
+        Unit.create(**dict(request.form.iteritems()))
         return redirect('/schema/units')
 
     else:
@@ -462,6 +458,8 @@ def export_xml(args):
 def run_ui(args):
     global g
     g = init_graph()
+    import model
+    model.g = g
     #g.config.set_logger(DEBUG)
     app.debug = True
     app.secret_key = 'Todo'
