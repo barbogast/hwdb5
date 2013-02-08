@@ -137,6 +137,8 @@ def handle_pentium4_willamette(file_string, url):
         row['Frequency'] = row['Frequency'].strip(' MHz')
         row['Thermal design power'] = row['Thermal design power'].strip(' W')
         row['Release price'] = row['Release price'].strip('$')
+        row['Part number'] = str(row['Part number'])
+        row['S-Spec'] = str(row['S-Spec'])
 
         parts.append({ '<name>': name, '<attrs>': row, '<standards>': (socket,)})
         connections.append({ '<name>': name, '<no_connector>': [{'<name>': 'Willamette'}]})

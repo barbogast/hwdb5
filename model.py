@@ -3,17 +3,6 @@ from bulbs.model import Node as BulbsNode, Relationship
 from bulbs.property import String, Integer, DateTime, Bool
 
 
-
-class BaseBulbsNode(BulbsNode):
-    __mode__ = 'STRICT'
-
-
-class LabeledBulbsNode(BaseBulbsNode):
-    note = String(nullable=True)
-    label = String(nullable=False, unique=True)
-
-
-########################################################################
 node_classes = []
 
 
@@ -50,11 +39,13 @@ class Properties(object):
         return hasattr(self._bnode, name)
 
 
+
 class Node(six.with_metaclass(NodeMeta, object)):
 #class Node(object):
 #    __metaclass__ = NodeMeta
     __mode__ = 'STRICT'
     proxy_name = None
+    properties = {}
 
 
     @classmethod
@@ -154,6 +145,39 @@ class LabeledNode(Node):
         super(LabeledNode, self).update(d)
 
 
+class RootPart(Node):
+    element_type = 'root_part'
+
+class Part(LabeledNode):
+    element_type = "part"
+    is_schema = Bool(nullable=False, default=False)
+
+class Connector(LabeledNode):
+    element_type = "connector"
+
+class RootConnector(Node):
+    element_type = 'root_connector'
+
+class Connection(Node):
+    element_type = "connection"
+    quantity = Integer()
+
+class ConnectionRoot(Node):
+    element_type = "connection_root"
+
+class ConnectionSchemaRoot(Node):
+    element_type = "connection_schema_root"
+
+class RootStandard(Node):
+    element_type = 'root_standard'
+
+class Standard(LabeledNode):
+    element_type = "standard"
+
+class AttrType(LabeledNode):
+    element_type = "attr_type"
+
+
 class Unit(LabeledNode):
     element_type = "unit"
 
@@ -172,74 +196,9 @@ class Unit(LabeledNode):
             g.vertices.delete(self.eid)
 
 
-
-class RootPart(BaseBulbsNode):
-    element_type = 'root_part'
-    proxy_name = element_type + 's'
-
-class Part(LabeledBulbsNode):
-    element_type = "part"
-    proxy_name = element_type + 's'
-    is_schema = Bool(nullable=False, default=False)
-
-class Connector(LabeledBulbsNode):
-    element_type = "connector"
-    proxy_name = element_type + 's'
-
-class RootConnector(BaseBulbsNode):
-    element_type = 'root_connector'
-    proxy_name = element_type + 's'
-
-class Connection(BaseBulbsNode):
-    element_type = "connection"
-    proxy_name = element_type + 's'
-    quantity = Integer()
-
-class ConnectionRoot(BaseBulbsNode):
-    element_type = "connection_root"
-    proxy_name = element_type + 's'
-
-class ConnectionSchemaRoot(BaseBulbsNode):
-    element_type = "connection_schema_root"
-    proxy_name = element_type + 's'
-
-class RootStandard(BaseBulbsNode):
-    element_type = 'root_standard'
-    proxy_name = element_type + 's'
-
-class Standard(LabeledBulbsNode):
-    element_type = "standard"
-    proxy_name = element_type + 's'
-
-class AttrType(LabeledBulbsNode):
-    element_type = "attr_type"
-    proxy_name = element_type + 's'
-
-'''class Unit(LabeledBulbsNode):
-    element_type = "unit"
-    proxy_name = element_type + 's'
-    name = String(nullable=False)
-    format = String(nullable=False)
-
-    def get_attr_types(self):
-        return self.inV('is_unit') or []
-
-    def delete(self):
-        if self.get_attr_types():
-            raise Exception('Could not delete')
-        else:
-            g.vertices.delete(self.eid)'''
-
-
-class Attribute(BaseBulbsNode):
+class Attribute(Node):
     element_type = "attribute"
-    proxy_name = element_type + 's'
     value = String(nullable=False)
-
-bulbs_node_classes = (
-    RootPart, Part, Connector, RootConnector, Connection, ConnectionRoot,
-    ConnectionSchemaRoot, RootStandard, Standard, AttrType, Attribute
-)
 
 
 class IsA(Relationship): label = "is_a"

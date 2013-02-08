@@ -23,9 +23,6 @@ def init_graph():
     g = Graph(config)
     #g.config.set_logger(DEBUG)
 
-    for node_cls in bulbs_node_classes:
-        g.add_proxy(node_cls.proxy_name, node_cls)
-
     for node_cls in node_classes:
         bubls_node_cls = make_bulbs_node_class(name='Bulbs'+node_cls.__name__,
                                                element_type=node_cls.element_type,
@@ -69,7 +66,6 @@ def _add_element(el_dict, parent_el, element_type, root_element_node, extra_prop
             raise Exception('Element %r already present' % label)
 
     else:
-
         d = {
             'label': label,
             'note': el_dict.pop('<note>', None),
