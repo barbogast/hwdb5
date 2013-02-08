@@ -1,3 +1,5 @@
+from logging import DEBUG
+
 from readcsv import read_all_files
 import treetools
 import data
@@ -19,8 +21,16 @@ def init_graph():
 
     config = Config(url)
     g = Graph(config)
-    for node_cls in node_classes:
+    #g.config.set_logger(DEBUG)
+
+    for node_cls in bulbs_node_classes:
         g.add_proxy(node_cls.proxy_name, node_cls)
+
+    for node_cls in node_classes:
+        bubls_node_cls = make_bulbs_node_class(name='Bulbs'+node_cls.__name__,
+                                               element_type=node_cls.element_type,
+                                               properties=node_cls.properties)
+        g.add_proxy(node_cls.get_proxy_name(), bubls_node_cls)
 
     for rel_cls in relationship_classes:
         g.add_proxy(rel_cls.label, rel_cls)
@@ -36,7 +46,7 @@ def _load_units():
             'note': unit.pop('note', None),
         }
         assert not unit
-        g.units.create(**d)
+        Unit.create(**d)
 
 
 def _load_attr_types():
@@ -205,6 +215,8 @@ def reset_db(args):
 
     global g
     g = init_graph()
+    import model
+    model.g = g
     g.clear()
     g = init_graph()
     root_part = g.root_parts.create()

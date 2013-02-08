@@ -4,7 +4,6 @@ import argparse
 import json
 from collections import OrderedDict
 from operator import itemgetter, methodcaller, attrgetter
-from logging import DEBUG
 
 from flask import Flask, render_template_string, jsonify, request, Markup, redirect
 from flaskext.htmlbuilder import html as H
@@ -149,7 +148,7 @@ def edit_units():
             )
         else:
             content = H.form(method='POST')(
-                'Really delete "%s"?' % unit.name, H.br,
+                'Really delete "%s"?' % unit.P.name, H.br,
                 H.button(type='submit', name='action', value='delete')('Yes'), H.br,
                 H.a(href='/schema/units')('Back'),
                 H.input(type='hidden', name='eid', value=eid),
@@ -168,12 +167,13 @@ def edit_units():
 
     elif request.form.get('action') == 'delete':
         unit = Unit.from_eid(request.form['eid'])
-        unit.delete()
+        if unit:
+            unit.delete()
         return redirect('/schema/units')
 
     elif request.form.get('action') == 'edit':
         unit = Unit.from_eid(request.form['eid'])
-        if request.form['label'] != unit.label and Unit.get_count_from_label(request.form['label']) > 0:
+        if request.form['label'] != unit.P.label and Unit.get_count_from_label(request.form['label']) > 0:
             content = _mk_form(request.form, 'edit', 'Unit name already taken')
             return render_template_string(base_template, heading='Edit unit', content=content)
         unit.update(request.form)
@@ -460,8 +460,8 @@ def run_ui(args):
     g = init_graph()
     import model
     model.g = g
-    #g.config.set_logger(DEBUG)
     app.debug = True
+    app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
     app.secret_key = 'Todo'
     if True:
         toolbar = DebugToolbarExtension(app)

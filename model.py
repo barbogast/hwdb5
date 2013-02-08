@@ -1,118 +1,209 @@
-from bulbs.model import Node, Relationship
+import six
+from bulbs.model import Node as BulbsNode, Relationship
 from bulbs.property import String, Integer, DateTime, Bool
 
 
 
-class BaseNode(Node):
+class BaseBulbsNode(BulbsNode):
     __mode__ = 'STRICT'
 
-    @classmethod
-    def get_proxy(cls):
-        return getattr(g, cls.proxy_name)
 
-    @classmethod
-    def from_eid(cls, eid):
-        return g.vertices.get(eid)
-
-    @classmethod
-    def create(cls, **kwargs):
-        return cls.get_proxy().create(kwargs)
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
-
-    def get(self, key, default=None):
-        if hasattr(self, key):
-            v = getattr(self, key)
-            return default if v is None else v
-        else:
-            return default
-
-    def update(self, d):
-        for key in self.get_property_keys():
-            if key in d:
-                self[key] = d[key]
-
-
-class LabeledNode(BaseNode):
+class LabeledBulbsNode(BaseBulbsNode):
     note = String(nullable=True)
     label = String(nullable=False, unique=True)
 
+
+########################################################################
+node_classes = []
+
+
+def make_bulbs_node_class(name, element_type, properties):
+    dct = properties.copy()
+    dct['element_type'] = element_type
+    return type('Bulbs'+name, (BulbsNode, ), dct)
+
+
+class NodeMeta(type):
+    def __init__(cls, name, bases, dct):
+        properties = getattr(cls, 'properties', {})
+        for base in bases:
+            properties.update(getattr(base, 'properties', {}))
+
+        if hasattr(cls, 'element_type'):
+            node_classes.append(cls)
+
+
+class Properties(object):
+    def __init__(self, bulbs_node):
+        object.__setattr__(self, '_bnode', bulbs_node)
+
+    def __getattr__(self, name):
+        return getattr(self._bnode, name)
+
+    def __setattr__(self, name, value):
+        return setattr(self._bnode, name, value)
+
+    __getitem__ = __getattr__
+    __setitem__ = __setattr__
+
+    def __contains__(self, name):
+        return hasattr(self._bnode, name)
+
+
+class Node(six.with_metaclass(NodeMeta, object)):
+#class Node(object):
+#    __metaclass__ = NodeMeta
+    __mode__ = 'STRICT'
+    proxy_name = None
+
+
+    @classmethod
+    def get_proxy_name(cls):
+        return cls.proxy_name or cls.element_type + 's'
+
+
+    @classmethod
+    def _get_proxy(cls):
+        return getattr(g, cls.get_proxy_name())
+
+
+    @classmethod
+    def from_eid(cls, eid):
+        bulbs_node = g.vertices.get(eid)
+        if bulbs_node is None:
+            return None
+        return cls(bulbs_node)
+
+
     @classmethod
     def create(cls, **kwargs):
-        if cls.get_proxy().index.lookup(label=kwargs['label']):
+        bulbs_node = cls._get_proxy().create(kwargs)
+        return cls(bulbs_node)
+
+
+    def __init__(self, bulbs_node):
+        self.P = Properties(bulbs_node)
+        self.E = bulbs_node
+        self.eid = bulbs_node.eid
+        self._bulbs_node = bulbs_node
+
+
+    def get(self, key, default=None):
+        if key in self.P:
+            return self.P[key]
+        else:
+            return default
+
+
+    def update(self, d):
+        for key in self.properties:
+            if key in d:
+                self.P[key] = d[key]
+
+
+    def save(self):
+        self._bulbs_node.save()
+
+
+
+class LabeledNode(Node):
+    properties = dict(
+        note = String(nullable=True),
+        label = String(nullable=False, unique=True),
+    )
+
+    @classmethod
+    def create(cls, **kwargs):
+        if cls._get_proxy().index.lookup(label=kwargs['label']):
             raise Exception('Duplicate entry %s' % kwargs['label'])
-        return cls.get_proxy().create(kwargs)
+        bulbs_node = cls._get_proxy().create(kwargs)
+        return cls(bulbs_node)
 
     @classmethod
     def from_label(cls, label):
-        res = cls.get_proxy().index.lookup(label=label)
+        res = cls._get_proxy().index.lookup(label=label)
         if not res:
             return None
         res = list(res)
         if len(res) != 1:
             raise Exception('Found multiple (%s) %s with label %s' % (len(res), cls.__name__, label))
-        return res[0]
+        return cls(res[0])
 
     @classmethod
     def get_count_from_label(cls, label):
-        return len(list(cls.get_proxy().index.lookup(label=label) or []))
+        return len(list(cls._get_proxy().index.lookup(label=label) or []))
 
     def __unicode__(self):
         return "<%s: %r>" % (self.__class__.__name__, self.label)
 
     def update(self, d):
-        if d['label'] != self.label and self.get_count_from_label(d['label']) > 0:
+        if d['label'] != self.P.label and self.get_count_from_label(d['label']) > 0:
             raise Exception('%s with label=%s is already present' % (self.__class__.__name__, d['label']))
         super(LabeledNode, self).update(d)
 
 
-class RootPart(BaseNode):
+class Unit(LabeledNode):
+    element_type = "unit"
+
+    properties = dict(
+        name = String(nullable=False),
+        format = String(nullable=False),
+    )
+
+    def get_attr_types(self):
+        return self.E.inV('is_unit') or []
+
+    def delete(self):
+        if self.get_attr_types():
+            raise Exception('Could not delete')
+        else:
+            g.vertices.delete(self.eid)
+
+
+
+class RootPart(BaseBulbsNode):
     element_type = 'root_part'
     proxy_name = element_type + 's'
 
-class Part(LabeledNode):
+class Part(LabeledBulbsNode):
     element_type = "part"
     proxy_name = element_type + 's'
     is_schema = Bool(nullable=False, default=False)
 
-class Connector(LabeledNode):
+class Connector(LabeledBulbsNode):
     element_type = "connector"
     proxy_name = element_type + 's'
 
-class RootConnector(BaseNode):
+class RootConnector(BaseBulbsNode):
     element_type = 'root_connector'
     proxy_name = element_type + 's'
 
-class Connection(BaseNode):
+class Connection(BaseBulbsNode):
     element_type = "connection"
     proxy_name = element_type + 's'
     quantity = Integer()
 
-class ConnectionRoot(BaseNode):
+class ConnectionRoot(BaseBulbsNode):
     element_type = "connection_root"
     proxy_name = element_type + 's'
 
-class ConnectionSchemaRoot(BaseNode):
+class ConnectionSchemaRoot(BaseBulbsNode):
     element_type = "connection_schema_root"
     proxy_name = element_type + 's'
 
-class RootStandard(BaseNode):
+class RootStandard(BaseBulbsNode):
     element_type = 'root_standard'
     proxy_name = element_type + 's'
 
-class Standard(LabeledNode):
+class Standard(LabeledBulbsNode):
     element_type = "standard"
     proxy_name = element_type + 's'
 
-class AttrType(LabeledNode):
+class AttrType(LabeledBulbsNode):
     element_type = "attr_type"
     proxy_name = element_type + 's'
 
-class Unit(LabeledNode):
+'''class Unit(LabeledBulbsNode):
     element_type = "unit"
     proxy_name = element_type + 's'
     name = String(nullable=False)
@@ -125,17 +216,17 @@ class Unit(LabeledNode):
         if self.get_attr_types():
             raise Exception('Could not delete')
         else:
-            g.vertices.delete(self.eid)
+            g.vertices.delete(self.eid)'''
 
 
-class Attribute(BaseNode):
+class Attribute(BaseBulbsNode):
     element_type = "attribute"
     proxy_name = element_type + 's'
     value = String(nullable=False)
 
-node_classes = (
+bulbs_node_classes = (
     RootPart, Part, Connector, RootConnector, Connection, ConnectionRoot,
-    ConnectionSchemaRoot, RootStandard, Standard, AttrType, Unit, Attribute
+    ConnectionSchemaRoot, RootStandard, Standard, AttrType, Attribute
 )
 
 
@@ -162,25 +253,25 @@ relationship_classes = (
 )
 
 relationships = (
-    (Standard,      IsA,                Standard),
-    (Standard,      IsA,                RootStandard),
-    (Connector,     IsA,                Connector),
-    (Connector,     IsA,                RootConnector),
-    (Part,          IsA,                Part),
-    (Part,          CanBeContainedIn,   Part),
-    (Part,          IsA,                RootPart),
-    (Part,          IsA,                ConnectionSchemaRoot),
-    (Part,          HasConnection,      ConnectionRoot),
-    (Part,          HasConnector,       Connector),
-    (Part,          Implements,         Standard),
-    (Part,          HasAttribute,       Attribute),
-    (Part,          CanHaveAttrTyp,     AttrType,),
-    (Connection,    BelongsTo,          Part),
-    (Connection,    ConnectedVia,       Connector),
-    (Connection,    ConnectedFrom,      Part),
-    (Connection,    ConnectedTo,        Part),
-    (Attribute,     HasAttrType,        AttrType),
-    (AttrType,      IsUnit,             Unit),
+    (Standard,      '1', IsA,                '*', Standard),
+    (Standard,      '1', IsA,                '*', RootStandard),
+    (Connector,     '1', IsA,                '*', Connector),
+    (Connector,     '1', IsA,                '*', RootConnector),
+    (Part,          '1', IsA,                '*', Part),
+    (Part,          '*', CanBeContainedIn,   '*', Part),
+    (Part,          '1', IsA,                '*', RootPart),
+    (Part,          '1', IsA,                '*', ConnectionSchemaRoot),
+    (Part,          '*', HasConnection,      '*', ConnectionRoot),
+    (Part,          '*', HasConnector,       '*', Connector),
+    (Part,          '*', Implements,         '*', Standard),
+    (Part,          '*', HasAttribute,       '*', Attribute),
+    (Part,          '*', CanHaveAttrTyp,     '*', AttrType,),
+    (Connection,    '1', BelongsTo,          '*', Part),
+    (Connection,    '1', ConnectedVia,       '*', Connector),
+    (Connection,    '1', ConnectedFrom,      '*', Part),
+    (Connection,    '1', ConnectedTo,        '*', Part),
+    (Attribute,     '1', HasAttrType,        '*', AttrType),
+    (AttrType,      '1', IsUnit,             '*', Unit),
 )
 
 
