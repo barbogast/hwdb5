@@ -75,21 +75,21 @@ def index_view():
 @app.route('/schema/units')
 def units_view():
     units = []
-    for unit in g.units.get_all():
+    for unit in N.Unit.get_all():
         units.append(unit)
-    units.sort(key=lambda u: u.label.lower())
+    units.sort(key=lambda u: u.P.label.lower())
 
     rows = []
     for unit in units:
         attr_types = []
-        for attr_type in unit.inV('is_unit') or []:
+        for attr_type in unit._bulbs_node.inV('is_unit') or []:
             attr_types.append(attr_type.label)
 
         rows.append(H.tr(
-            H.td(unit.name),
-            H.td(unit.label),
-            H.td(unit.format),
-            H.td(unit.note),
+            H.td(unit.P.name),
+            H.td(unit.P.label),
+            H.td(unit.P.format),
+            H.td(unit.P.note),
             H.td(', '.join(attr_types)),
             H.td(H.button(type='submit', name='edit_form', value=str(unit.eid))('Edit')),
             H.td(H.button(type='submit', name='delete_form', value=str(unit.eid))('Delete')),
@@ -138,7 +138,7 @@ def _mk_form(unit, action, msg=''):
 def edit_units():
     if 'delete_form' in request.form:
         eid = request.form['delete_form']
-        unit = Unit.from_eid(eid)
+        unit = N.Unit.from_eid(eid)
         attr_types = unit.get_attr_types()
 
         if attr_types:
@@ -156,7 +156,7 @@ def edit_units():
         return render_template_string(base_template, heading='Really delete?', content=content)
 
     elif 'edit_form' in request.form:
-        unit = Unit.from_eid(request.form['edit_form'])
+        unit = N.Unit.from_eid(request.form['edit_form'])
         content = _mk_form(unit, 'edit')
         return render_template_string(base_template, heading='Edit unit', content=content)
 
@@ -166,14 +166,14 @@ def edit_units():
 
 
     elif request.form.get('action') == 'delete':
-        unit = Unit.from_eid(request.form['eid'])
+        unit = N.Unit.from_eid(request.form['eid'])
         if unit:
             unit.delete()
         return redirect('/schema/units')
 
     elif request.form.get('action') == 'edit':
-        unit = Unit.from_eid(request.form['eid'])
-        if request.form['label'] != unit.P.label and Unit.all_from_label(request.form['label']):
+        unit = N.Unit.from_eid(request.form['eid'])
+        if request.form['label'] != unit.P.label and N.Unit.all_from_label(request.form['label']):
             content = _mk_form(request.form, 'edit', 'Unit name already taken')
             return render_template_string(base_template, heading='Edit unit', content=content)
         unit.update(request.form)
@@ -181,11 +181,11 @@ def edit_units():
         return redirect('/schema/units')
 
     elif request.form.get('action') == 'new':
-        if Unit.all_from_label(request.form['label']):
+        if N.Unit.all_from_label(request.form['label']):
             content = _mk_form(request.form, 'new', 'Unit with this unit already present')
             return render_template_string(base_template, heading='Add unit', content=content)
 
-        Unit.create(**dict(request.form.iteritems()))
+        N.Unit.create(**dict(request.form.iteritems()))
         return redirect('/schema/units')
 
     else:
@@ -195,19 +195,19 @@ def edit_units():
 @app.route('/schema/attr_types')
 def attr_types():
     rows = []
-    attr_types = sorted(g.attr_types.get_all(), key=attrgetter('label'))
+    attr_types = sorted(N.AttrType.get_all(), key=lambda el: el.P.label)
     for attr_type in attr_types:
-        (unit,) = attr_type.outV('is_unit')
+        (unit,) = attr_type._bulbs_node.outV('is_unit')
 
         parts = []
-        for part in attr_type.inV('can_have_attr_type') or []:
+        for part in attr_type._bulbs_node.inV('can_have_attr_type') or []:
             parts.append(part.label)
 
         rows.append(H.tr(
-            H.td(Markup(attr_type.label)), #TODO: using Markup is unsafe
+            H.td(Markup(attr_type.P.label)), #TODO: using Markup is unsafe
             H.td(unit.name),
             H.td(', '.join(parts)),
-            H.td(attr_type.note)
+            H.td(attr_type.P.note)
         ))
 
     content = H.table(class_="table table-condensed table-bordered")(
@@ -300,8 +300,8 @@ def _get_connections_json():
 
 
     l = []
-    (root,) = g.connection_roots.get_all()
-    for part in root.inV('has_connection') or []:
+    root = N.ConnectionRoot.get_one()
+    for part in root._bulbs_node.inV('has_connection') or []:
         connected_parts = []
         l.append({'title': part.label,
                   'key': part.eid,
@@ -313,17 +313,16 @@ def _get_connections_json():
 
 def _get_attributes_json():
     attr_types = {}
-    for attribute in g.attributes.get_all():
+    for attribute in N.Attribute.get_all():
         parts = []
-        for part in attribute.inV('has_attribute'):
+        for part in attribute._bulbs_node.inV('has_attribute'):
             parts.append(part.label)
         parts.sort()
 
         if len(parts) > 1:
-            (attr_type,) = attribute.outV('has_attr_type')
+            (attr_type,) = attribute._bulbs_node.outV('has_attr_type')
             (unit,) = attr_type.outV('is_unit')
-
-            title = unit.format % {'unit': attribute.value} + ' [%s]' % len(parts)
+            title = unit.format % {'unit': attribute.P.value} + ' [%s]' % len(parts)
             attr_type_dict = attr_types.setdefault(attr_type.label, {'title': attr_type.label, 'children': []})
             attr_type_dict['children'].append({'title': title, 'children': parts})
 
@@ -339,21 +338,21 @@ def _get_attributes_json():
 
 def _get_element_json(parent_el):
     l = []
-    for element in parent_el.inV('is_a') or []:
+    for element in parent_el._bulbs_node.inV('is_a') or []:
         l.append({'title': element.label,
                   'key': element.eid,
                   'isFolder': hasattr(element, 'is_schema') and element.is_schema,
-                  'children': _get_element_json(element)})
+                  'children': _get_element_json(N.Part(element))})
     l.sort(key=itemgetter('title'))
     return l
 
 
 def _get_part_schema_json(parent_el):
     l = []
-    for element in parent_el.inV('is_a') or []:
+    for element in parent_el._bulbs_node.inV('is_a') or []:
         if element.is_schema:
             d = {'title': element.label, 'key': element.eid }
-            d['children'] = _get_part_schema_json(element)
+            d['children'] = _get_part_schema_json(N.Part(element))
             l.append(d)
     l.sort(key=itemgetter('title'))
     return l
@@ -363,9 +362,9 @@ def _get_connection_schema_json(parent_el, edge_type):
     # the function is called the first time with edge_type='is_a'
     # all inner calls have edge_type='can_contain'
     l = []
-    for element in parent_el.inV(edge_type) or []:
+    for element in parent_el._bulbs_node.inV(edge_type) or []:
         d = {'title': element.label, 'key': element.eid }
-        d['children'] = _get_connection_schema_json(element, 'can_be_contained_in')
+        d['children'] = _get_connection_schema_json(N.Part(element), 'can_be_contained_in')
         l.append(d)
     l.sort(key=itemgetter('title'))
     return l
@@ -376,23 +375,23 @@ def json():
     data_type = request.args['type']
 
     if data_type == 'parts':
-        (root,) = g.root_parts.get_all()
+        root = N.RootPart.get_one()
         result = _get_element_json(root)
 
     elif data_type == 'standards':
-        (root,) = g.root_standards.get_all()
+        root = N.RootStandard.get_one()
         result = _get_element_json(root)
 
     elif data_type == 'connectors':
-        (root,) = g.root_connectors.get_all()
+        root = N.RootConnector.get_one()
         result = _get_element_json(root)
 
     elif data_type == 'part_schema':
-        (root,) = g.root_parts.get_all()
+        root = N.RootPart.get_one()
         result = _get_part_schema_json(root)
 
     elif data_type == 'connection_schema':
-        (root,) = g.connection_schema_roots.get_all()
+        root = N.ConnectionSchemaRoot.get_one()
         result = _get_connection_schema_json(root, 'is_a')
 
     elif data_type == 'connections':
@@ -412,7 +411,7 @@ def details():
     def _get_parents(element):
         (parent,) = element.outV('is_a')
         # Hacky hacky hacky patteng
-        if isinstance(parent, (RootConnector, RootPart, RootStandard)):
+        if isinstance(parent, (g.RootConnector.element_class, g.RootPart.element_class, g.RootStandard.element_class)):
             return []
         else:
             l = _get_parents(parent)

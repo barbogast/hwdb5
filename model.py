@@ -3,12 +3,10 @@ from bulbs.model import Node as BulbsNode, Relationship
 from bulbs.property import String, Integer, DateTime, Bool
 
 
-node_classes = []
 
-
-def make_bulbs_node_class(name, element_type, properties):
+def make_bulbs_node_class(name, properties):
     dct = properties.copy()
-    dct['element_type'] = element_type
+    dct['element_type'] = name
     return type('Bulbs'+name, (BulbsNode, ), dct)
 
 
@@ -18,13 +16,14 @@ class NodeMeta(type):
         for base in bases:
             properties.update(getattr(base, 'properties', {}))
 
-        if hasattr(cls, 'element_type'):
-            node_classes.append(cls)
 
 
 class Properties(object):
     def __init__(self, bulbs_node):
         object.__setattr__(self, '_bnode', bulbs_node)
+
+    def __str__(self):
+        return str(self._bnode)
 
     def __getattr__(self, name):
         return getattr(self._bnode, name)
@@ -39,6 +38,13 @@ class Properties(object):
         return hasattr(self._bnode, name)
 
 
+class Edge(object):
+    def __init__(self, bulbs_node):
+        self._bnode = bulbs_node
+
+    def inV(self, s):
+        return
+
 
 class Node(six.with_metaclass(NodeMeta, object)):
 #class Node(object):
@@ -50,7 +56,7 @@ class Node(six.with_metaclass(NodeMeta, object)):
 
     @classmethod
     def get_proxy_name(cls):
-        return cls.proxy_name or cls.element_type + 's'
+        return cls.__name__
 
 
     @classmethod
@@ -68,8 +74,34 @@ class Node(six.with_metaclass(NodeMeta, object)):
 
     @classmethod
     def create(cls, **kwargs):
-        bulbs_node = cls._get_proxy().create(kwargs)
+        bulbs_node = cls._get_proxy().create(**kwargs)
         return cls(bulbs_node)
+
+
+    @classmethod
+    def get_one(cls):
+        res = cls._get_proxy().get_all()
+        if not res:
+            raise Exception('Found no %s with label %s' % (cls.__name__, label))
+        el = cls(res.next())
+        try:
+            res.next()
+        except StopIteration:
+            return el
+        else:
+            raise Exception('Found multiple (%s) %s with label %s' % (len(res), cls.__name__, label))
+
+
+    @classmethod
+    def get_all(cls, **kwargs):
+        if kwargs:
+            if len(kwargs) > 1:
+                raise Exception('Not supported, doesnt work with bulbs')
+            name, value = kwargs.items()[0]
+            i = cls._get_proxy().index.lookup(name, value)
+        else:
+            i = cls._get_proxy().get_all()
+        return (cls(o) for o in i or [])
 
 
     def __init__(self, bulbs_node):
@@ -77,6 +109,13 @@ class Node(six.with_metaclass(NodeMeta, object)):
         self.E = bulbs_node
         self.eid = bulbs_node.eid
         self._bulbs_node = bulbs_node
+
+
+    def __str__(self):
+        s = []
+        for name in self.properties:
+            s.append('%s: %s' % (name, self.P[name]))
+        return "%s %s" % (super(Node, self).__str__(), ', '.join(s))
 
 
     def get(self, key, default=None):
@@ -108,7 +147,7 @@ class LabeledNode(Node):
     def create(cls, **kwargs):
         if cls._get_proxy().index.lookup(label=kwargs['label']):
             raise Exception('Duplicate entry %s' % kwargs['label'])
-        bulbs_node = cls._get_proxy().create(kwargs)
+        bulbs_node = cls._get_proxy().create(**kwargs)
         return cls(bulbs_node)
 
 
@@ -116,7 +155,7 @@ class LabeledNode(Node):
     def one_from_label(cls, label):
         res = cls._get_proxy().index.lookup(label=label)
         if not res:
-            return None
+            raise Exception('Found no %s with label %s' % (cls.__name__, label))
         el = cls(res.next())
         try:
             res.next()
@@ -129,7 +168,6 @@ class LabeledNode(Node):
     @classmethod
     def all_from_label(cls, label):
         res = cls._get_proxy().index.lookup(label=label)
-        print repr(res)
         if not res:
             return
         else:
@@ -145,61 +183,61 @@ class LabeledNode(Node):
         super(LabeledNode, self).update(d)
 
 
-class RootPart(Node):
-    element_type = 'root_part'
+def _get_node_classes():
+    class RootPart(Node): pass
+    class Connector(LabeledNode): pass
+    class RootConnector(Node): pass
+    class ConnectionRoot(Node): pass
+    class ConnectionSchemaRoot(Node): pass
+    class RootStandard(Node): pass
+    class Standard(LabeledNode): pass
+    class AttrType(LabeledNode): pass
 
-class Part(LabeledNode):
-    element_type = "part"
-    is_schema = Bool(nullable=False, default=False)
+    class Part(LabeledNode):
+        properties = dict(
+            is_schema = Bool(nullable=False, default=False)
+        )
 
-class Connector(LabeledNode):
-    element_type = "connector"
+    class Connection(Node):
+        properties = dict(
+            quantity = Integer()
+        )
 
-class RootConnector(Node):
-    element_type = 'root_connector'
+    class Attribute(Node):
+        properties = dict(
+            value = String(nullable=False)
+        )
 
-class Connection(Node):
-    element_type = "connection"
-    quantity = Integer()
+    class Unit(LabeledNode):
+        properties = dict(
+            name = String(nullable=False),
+            format = String(nullable=False),
+        )
 
-class ConnectionRoot(Node):
-    element_type = "connection_root"
+        def get_attr_types(self):
+            return self.E.inV('is_unit') or []
 
-class ConnectionSchemaRoot(Node):
-    element_type = "connection_schema_root"
+        def delete(self):
+            if self.get_attr_types():
+                raise Exception('Could not delete')
+            else:
+                g.vertices.delete(self.eid)
 
-class RootStandard(Node):
-    element_type = 'root_standard'
+    class_list = locals()
+    class Nodes(object):
+        classes = class_list
+        def __getattr__(self, name):
+            return class_list[name]
 
-class Standard(LabeledNode):
-    element_type = "standard"
+        def iteritems(self):
+            return class_list.iteritems()
 
-class AttrType(LabeledNode):
-    element_type = "attr_type"
+        def __iter__(self):
+            return iter(class_list)
 
+    return Nodes()
 
-class Unit(LabeledNode):
-    element_type = "unit"
-
-    properties = dict(
-        name = String(nullable=False),
-        format = String(nullable=False),
-    )
-
-    def get_attr_types(self):
-        return self.E.inV('is_unit') or []
-
-    def delete(self):
-        if self.get_attr_types():
-            raise Exception('Could not delete')
-        else:
-            g.vertices.delete(self.eid)
-
-
-class Attribute(Node):
-    element_type = "attribute"
-    value = String(nullable=False)
-
+N = _get_node_classes()
 
 class IsA(Relationship): label = "is_a"
 class BelongsTo(Relationship): label = "belongs_to"
@@ -224,25 +262,25 @@ relationship_classes = (
 )
 
 relationships = (
-    (Standard,      '1', IsA,                '*', Standard),
-    (Standard,      '1', IsA,                '*', RootStandard),
-    (Connector,     '1', IsA,                '*', Connector),
-    (Connector,     '1', IsA,                '*', RootConnector),
-    (Part,          '1', IsA,                '*', Part),
-    (Part,          '*', CanBeContainedIn,   '*', Part),
-    (Part,          '1', IsA,                '*', RootPart),
-    (Part,          '1', IsA,                '*', ConnectionSchemaRoot),
-    (Part,          '*', HasConnection,      '*', ConnectionRoot),
-    (Part,          '*', HasConnector,       '*', Connector),
-    (Part,          '*', Implements,         '*', Standard),
-    (Part,          '*', HasAttribute,       '*', Attribute),
-    (Part,          '*', CanHaveAttrTyp,     '*', AttrType,),
-    (Connection,    '1', BelongsTo,          '*', Part),
-    (Connection,    '1', ConnectedVia,       '*', Connector),
-    (Connection,    '1', ConnectedFrom,      '*', Part),
-    (Connection,    '1', ConnectedTo,        '*', Part),
-    (Attribute,     '1', HasAttrType,        '*', AttrType),
-    (AttrType,      '1', IsUnit,             '*', Unit),
+    (N.Standard,      '1', IsA,                '*', N.Standard),
+    (N.Standard,      '1', IsA,                '*', N.RootStandard),
+    (N.Connector,     '1', IsA,                '*', N.Connector),
+    (N.Connector,     '1', IsA,                '*', N.RootConnector),
+    (N.Part,          '1', IsA,                '*', N.Part),
+    (N.Part,          '*', CanBeContainedIn,   '*', N.Part),
+    (N.Part,          '1', IsA,                '*', N.RootPart),
+    (N.Part,          '1', IsA,                '*', N.ConnectionSchemaRoot),
+    (N.Part,          '*', HasConnection,      '*', N.ConnectionRoot),
+    (N.Part,          '*', HasConnector,       '*', N.Connector),
+    (N.Part,          '*', Implements,         '*', N.Standard),
+    (N.Part,          '*', HasAttribute,       '*', N.Attribute),
+    (N.Part,          '*', CanHaveAttrTyp,     '*', N.AttrType,),
+    (N.Connection,    '1', BelongsTo,          '*', N.Part),
+    (N.Connection,    '1', ConnectedVia,       '*', N.Connector),
+    (N.Connection,    '1', ConnectedFrom,      '*', N.Part),
+    (N.Connection,    '1', ConnectedTo,        '*', N.Part),
+    (N.Attribute,     '1', HasAttrType,        '*', N.AttrType),
+    (N.AttrType,      '1', IsUnit,             '*', N.Unit),
 )
 
 
