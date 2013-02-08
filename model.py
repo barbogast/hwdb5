@@ -50,18 +50,12 @@ class Node(six.with_metaclass(NodeMeta, object)):
 #class Node(object):
 #    __metaclass__ = NodeMeta
     __mode__ = 'STRICT'
-    proxy_name = None
     properties = {}
-
+    _bulbs_proxy = None
 
     @classmethod
     def get_proxy_name(cls):
         return cls.__name__
-
-
-    @classmethod
-    def _get_proxy(cls):
-        return getattr(g, cls.get_proxy_name())
 
 
     @classmethod
@@ -74,13 +68,13 @@ class Node(six.with_metaclass(NodeMeta, object)):
 
     @classmethod
     def create(cls, **kwargs):
-        bulbs_node = cls._get_proxy().create(**kwargs)
+        bulbs_node = cls._bulbs_proxy.create(**kwargs)
         return cls(bulbs_node)
 
 
     @classmethod
     def get_one(cls):
-        res = cls._get_proxy().get_all()
+        res = cls._bulbs_proxy.get_all()
         if not res:
             raise Exception('Found no %s with label %s' % (cls.__name__, label))
         el = cls(res.next())
@@ -98,9 +92,9 @@ class Node(six.with_metaclass(NodeMeta, object)):
             if len(kwargs) > 1:
                 raise Exception('Not supported, doesnt work with bulbs')
             name, value = kwargs.items()[0]
-            i = cls._get_proxy().index.lookup(name, value)
+            i = cls._bulbs_proxy.index.lookup(name, value)
         else:
-            i = cls._get_proxy().get_all()
+            i = cls._bulbs_proxy.get_all()
         return (cls(o) for o in i or [])
 
 
@@ -145,15 +139,15 @@ class LabeledNode(Node):
 
     @classmethod
     def create(cls, **kwargs):
-        if cls._get_proxy().index.lookup(label=kwargs['label']):
+        if cls._bulbs_proxy.index.lookup(label=kwargs['label']):
             raise Exception('Duplicate entry %s' % kwargs['label'])
-        bulbs_node = cls._get_proxy().create(**kwargs)
+        bulbs_node = cls._bulbs_proxy.create(**kwargs)
         return cls(bulbs_node)
 
 
     @classmethod
     def one_from_label(cls, label):
-        res = cls._get_proxy().index.lookup(label=label)
+        res = cls._bulbs_proxy.index.lookup(label=label)
         if not res:
             raise Exception('Found no %s with label %s' % (cls.__name__, label))
         el = cls(res.next())
@@ -167,7 +161,7 @@ class LabeledNode(Node):
 
     @classmethod
     def all_from_label(cls, label):
-        res = cls._get_proxy().index.lookup(label=label)
+        res = cls._bulbs_proxy.index.lookup(label=label)
         if not res:
             return
         else:

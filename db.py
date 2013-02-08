@@ -26,7 +26,8 @@ def init_graph():
     for name, node_cls in N.iteritems():
         bubls_node_cls = make_bulbs_node_class(name='Bulbs'+name,
                                                properties=node_cls.properties)
-        g.add_proxy(node_cls.get_proxy_name(), bubls_node_cls)
+        g.add_proxy(node_cls.__name__, bubls_node_cls)
+        node_cls._bulbs_proxy = getattr(g, node_cls.__name__)
 
     for rel_cls in relationship_classes:
         g.add_proxy(rel_cls.label, rel_cls)
