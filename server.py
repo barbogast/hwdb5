@@ -173,7 +173,7 @@ def edit_units():
 
     elif request.form.get('action') == 'edit':
         unit = Unit.from_eid(request.form['eid'])
-        if request.form['label'] != unit.P.label and Unit.get_count_from_label(request.form['label']) > 0:
+        if request.form['label'] != unit.P.label and Unit.all_from_label(request.form['label']):
             content = _mk_form(request.form, 'edit', 'Unit name already taken')
             return render_template_string(base_template, heading='Edit unit', content=content)
         unit.update(request.form)
@@ -181,7 +181,7 @@ def edit_units():
         return redirect('/schema/units')
 
     elif request.form.get('action') == 'new':
-        if Unit.get_count_from_label(request.form['label']) > 0:
+        if Unit.all_from_label(request.form['label']):
             content = _mk_form(request.form, 'new', 'Unit with this unit already present')
             return render_template_string(base_template, heading='Add unit', content=content)
 

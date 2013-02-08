@@ -112,6 +112,7 @@ class LabeledNode(Node):
         label = String(nullable=False, unique=True),
     )
 
+
     @classmethod
     def create(cls, **kwargs):
         if cls._get_proxy().index.lookup(label=kwargs['label']):
@@ -119,25 +120,36 @@ class LabeledNode(Node):
         bulbs_node = cls._get_proxy().create(kwargs)
         return cls(bulbs_node)
 
+
     @classmethod
-    def from_label(cls, label):
+    def one_from_label(cls, label):
         res = cls._get_proxy().index.lookup(label=label)
         if not res:
             return None
-        res = list(res)
-        if len(res) != 1:
+        el = cls(res.next())
+        try:
+            res.next()
+        except StopIteration:
+            return el
+        else:
             raise Exception('Found multiple (%s) %s with label %s' % (len(res), cls.__name__, label))
-        return cls(res[0])
+
 
     @classmethod
-    def get_count_from_label(cls, label):
-        return len(list(cls._get_proxy().index.lookup(label=label) or []))
+    def all_from_label(cls, label):
+        res = cls._get_proxy().index.lookup(label=label)
+        print repr(res)
+        if not res:
+            return
+        else:
+            return (cls(o) for o in res)
+
 
     def __unicode__(self):
         return "<%s: %r>" % (self.__class__.__name__, self.label)
 
     def update(self, d):
-        if d['label'] != self.P.label and self.get_count_from_label(d['label']) > 0:
+        if d['label'] != self.P.label and self.all_from_label(d['label']):
             raise Exception('%s with label=%s is already present' % (self.__class__.__name__, d['label']))
         super(LabeledNode, self).update(d)
 
