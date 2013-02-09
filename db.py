@@ -48,7 +48,7 @@ def _load_units():
 
 def _load_attr_types():
     for attr_type in data.attr_types:
-        unit = N.Unit.one_from_label(label=attr_type.pop('unit'))
+        unit = N.Unit.get_one(label=attr_type.pop('unit'))
         attr_type['label'] = attr_type.pop('name')
         attr_type_obj = N.AttrType.create(**attr_type)
         g.is_unit.create(attr_type_obj._bulbs_node, unit._bulbs_node)
@@ -59,7 +59,7 @@ def _add_element(el_dict, parent_el, element_type, root_element_node, extra_prop
     label = el_dict.pop('<name>')
 
     # Check if element is already present
-    result = element_type.all_from_label(label)
+    result = element_type.get_all(label=label)
     if result:
         (el,) = result
         if not 'is_schema' in el.properties or not el.P.is_schema:
@@ -79,11 +79,11 @@ def _add_element(el_dict, parent_el, element_type, root_element_node, extra_prop
             g.is_a.create(el._bulbs_node, parent_el._bulbs_node)
 
         for attr_type_name in el_dict.pop('<attr_types>', []):
-            attr_type = N.AttrType.one_from_label(attr_type_name)
+            attr_type = N.AttrType.get_one(label=attr_type_name)
             g.can_have_attr_type.create(el._bulbs_node, attr_type._bulbs_node)
 
         for attr_type_name, attr_value in el_dict.pop('<attrs>', {}).iteritems():
-            res = N.AttrType.all_from_label(attr_type_name)
+            res = N.AttrType.get_all(label=attr_type_name)
             if not res:
                 raise Exception('Could not find attr_type %s' % attr_type_name)
             (attr_type,) = res
@@ -103,12 +103,12 @@ def _add_element(el_dict, parent_el, element_type, root_element_node, extra_prop
             g.has_attribute.create(el._bulbs_node, attribute._bulbs_node)
 
         for standard_name in el_dict.pop('<standards>', []):
-            standard = N.Standard.one_from_label(standard_name)
+            standard = N.Standard.get_one(label=standard_name)
             g.implements.create(el._bulbs_node, standard._bulbs_node)
 
         for conn_dict in el_dict.pop('<connectors>', []):
             conn_label = conn_dict.pop('<name>')
-            result = N.Connector.all_from_label(conn_label)
+            result = N.Connector.get_all(label=conn_label)
             if not result:
                 raise Exception('Could not find connector %r to connecto %r' % (conn_label, el.label))
             (connector,) = result
@@ -144,7 +144,7 @@ def _load_connectors(csv_files):
 def _load_parts(csv_files):
     parts = treetools.inflate_tree(data.parts, csv_files, 'parts')
     for part_dict in parts:
-        part = N.Part.one_from_label(part_dict.pop('<name>'))
+        part = N.Part.get_one(label=part_dict.pop('<name>'))
         for child_part_dict in part_dict.pop('<children>'):
             _add_element(child_part_dict, part, N.Part, None)
 
@@ -154,14 +154,14 @@ def _load_parts(csv_files):
 def _load_connection_schema():
     def _add_connection_schema(parent_part, child_part_dicts):
         for child_part_dict in child_part_dicts:
-            child_part = N.Part.one_from_label(child_part_dict.pop('<name>'))
+            child_part = N.Part.get_one(label=child_part_dict.pop('<name>'))
             g.can_be_contained_in.create(child_part._bulbs_node, parent_part._bulbs_node)
             _add_connection_schema(child_part, child_part_dict.pop('<children>', []))
 
     connection_schema_root = N.ConnectionSchemaRoot.get_one()
     connections = treetools.inflate_tree(data.connection_schema)
     for root_part_dict in connections:
-        root_part = N.Part.one_from_label(root_part_dict.pop('<name>'))
+        root_part = N.Part.get_one(label=root_part_dict.pop('<name>'))
         g.is_a.create(root_part._bulbs_node, connection_schema_root._bulbs_node)
         _add_connection_schema(root_part, root_part_dict.pop('<children>'))
 
@@ -170,7 +170,7 @@ def _load_connection_schema():
 
 def _load_connections(systems):
     def _create_connection(system_part, parent_part, child_dict, connector):
-        child_part = N.Part.one_from_label(child_dict.pop('<name>'))
+        child_part = N.Part.get_one(label=child_dict.pop('<name>'))
         connection = N.Connection.create(quantity=child_dict.pop('<quantity>', 1))
         g.belongs_to.create(connection._bulbs_node, system_part._bulbs_node)
         g.connected_from.create(parent_part._bulbs_node, connection._bulbs_node)
@@ -187,7 +187,7 @@ def _load_connections(systems):
             _create_connection(system_part, parent_part, child_dict, None)
 
         for conn_dict in part_dict.pop('<connectors>', []):
-            connector = N.Connector.one_from_label(conn_dict.pop('<name>'))
+            connector = N.Connector.get_one(label=conn_dict.pop('<name>'))
             for child_dict in conn_dict.pop('<children>', []):
                 _create_connection(system_part, parent_part, child_dict, connector)
 
@@ -196,7 +196,7 @@ def _load_connections(systems):
 
     connection_root = N.ConnectionRoot.get_one()
     for system_dict in systems:
-        system_part = N.Part.one_from_label(system_dict.pop('<name>'))
+        system_part = N.Part.get_one(label=system_dict.pop('<name>'))
         g.has_connection.create(system_part._bulbs_node, connection_root._bulbs_node)
         _add_connection(system_part, system_part, system_dict)
         assert not system_dict, system_dict

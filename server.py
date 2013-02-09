@@ -122,7 +122,7 @@ def _render_input(values, label, name, id=None, type=''):
     )
 
 
-def _mk_form(unit, action, msg=''):
+def _mk_form(unit, action, eid, msg=''):
     return H.form(method='POST')(class_="form-horizontal", method='POST')(
         msg,
         _render_input(unit, 'Name', name='name'),
@@ -130,7 +130,7 @@ def _mk_form(unit, action, msg=''):
         _render_input(unit, 'Format', name='format'),
         _render_input(unit, 'Note', name='note'),
         H.button(type='submit', name='action', value=action)('Save'),
-        H.input(type='hidden', name='eid', value=str(unit.get('eid'))),
+        H.input(type='hidden', name='eid', value=str(eid)),
     )
 
 
@@ -147,21 +147,24 @@ def edit_units():
                 H.br, H.a(href='/schema/units')('Back'),
             )
         else:
-            content = H.form(method='POST')(
+            form_els = [
                 'Really delete "%s"?' % unit.P.name, H.br,
                 H.button(type='submit', name='action', value='delete')('Yes'), H.br,
                 H.a(href='/schema/units')('Back'),
-                H.input(type='hidden', name='eid', value=eid),
-            )
+            ]
+            if eid is not None:
+                form_els.append(H.input(type='hidden', name='eid', value=eid))
+
+            content = H.form(method='POST')(form_els)
         return render_template_string(base_template, heading='Really delete?', content=content)
 
     elif 'edit_form' in request.form:
         unit = N.Unit.from_eid(request.form['edit_form'])
-        content = _mk_form(unit, 'edit')
+        content = _mk_form(unit, 'edit', unit.eid)
         return render_template_string(base_template, heading='Edit unit', content=content)
 
     elif 'new_form' in request.form:
-        content = _mk_form({}, 'new')
+        content = _mk_form({}, 'new', None)
         return render_template_string(base_template, heading='Add unit', content=content)
 
 
@@ -173,16 +176,16 @@ def edit_units():
 
     elif request.form.get('action') == 'edit':
         unit = N.Unit.from_eid(request.form['eid'])
-        if request.form['label'] != unit.P.label and N.Unit.all_from_label(request.form['label']):
-            content = _mk_form(request.form, 'edit', 'Unit name already taken')
+        if request.form['label'] != unit.P.label and N.Unit.get_all(label=request.form['label']):
+            content = _mk_form(request.form, 'edit', unit.eid, 'Unit name already taken')
             return render_template_string(base_template, heading='Edit unit', content=content)
         unit.update(request.form)
         unit.save()
         return redirect('/schema/units')
 
     elif request.form.get('action') == 'new':
-        if N.Unit.all_from_label(request.form['label']):
-            content = _mk_form(request.form, 'new', 'Unit with this unit already present')
+        if N.Unit.get_all(label=request.form['label']):
+            content = _mk_form(request.form, 'new', None, 'Unit with this unit already present')
             return render_template_string(base_template, heading='Add unit', content=content)
 
         N.Unit.create(**dict(request.form.iteritems()))

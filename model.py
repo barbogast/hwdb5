@@ -11,31 +11,46 @@ def make_bulbs_node_class(name, properties):
 
 
 class NodeMeta(type):
-    def __init__(cls, name, bases, dct):
-        properties = getattr(cls, 'properties', {})
+    def __new__(meta, name, bases, dct):
+        properties = dct.get('properties', {})
         for base in bases:
-            properties.update(getattr(base, 'properties', {}))
+            for k, v in getattr(base, 'properties', {}).iteritems():
+                if k in properties:
+                    raise AttributeError('Overiding attributes (%r) is not allowed (should it?)' % k)
+                properties[k] = v
 
+
+        unique = None
+        for key, obj in properties.iteritems():
+            if obj.unique:
+                if unique is not None:
+                    raise Exception('Multiple unique properties %s, %s in %s. Only one unique property is allowed at the moment. Bulbs does not allow to select nodes more than one property' % (unique, key, name))
+                unique = key
+
+        return super(NodeMeta, meta).__new__(meta, name, bases, dct)
 
 
 class Properties(object):
-    def __init__(self, bulbs_node):
+    def __init__(self, bulbs_node, allowed_properties):
         object.__setattr__(self, '_bnode', bulbs_node)
+        object.__setattr__(self, '_allowed_properties', allowed_properties)
 
     def __str__(self):
         return str(self._bnode)
 
     def __getattr__(self, name):
-        return getattr(self._bnode, name)
+        return getattr(self._bnode, name, None)
 
     def __setattr__(self, name, value):
-        return setattr(self._bnode, name, value)
+        if not name in self._allowed_properties:
+            raise AttributeError('Attribute %s not allowed for this node. Allowed attributes: %r' % (name, self._allowed_attributes))
+        setattr(self._bnode, name, value)
 
     __getitem__ = __getattr__
     __setitem__ = __setattr__
 
     def __contains__(self, name):
-        return hasattr(self._bnode, name)
+        return name in self._allowed_properties
 
 
 class Edge(object):
@@ -47,19 +62,23 @@ class Edge(object):
 
 
 class Node(six.with_metaclass(NodeMeta, object)):
-#class Node(object):
-#    __metaclass__ = NodeMeta
     __mode__ = 'STRICT'
     properties = {}
     _bulbs_proxy = None
 
+
     @classmethod
-    def get_proxy_name(cls):
-        return cls.__name__
+    def _get_unique_properties(cls):
+        l = []
+        for name, p in cls.properties.iteritems():
+            if p.unique:
+                l.append(name)
+        return l
 
 
     @classmethod
     def from_eid(cls, eid):
+        assert eid is not None
         bulbs_node = g.vertices.get(eid)
         if bulbs_node is None:
             return None
@@ -68,22 +87,33 @@ class Node(six.with_metaclass(NodeMeta, object)):
 
     @classmethod
     def create(cls, **kwargs):
+        unique_list = cls._get_unique_properties()
+        d = {}
+        for u in unique_list:
+            if kwargs.get(u, None) is None:
+                raise ValueError('Unique property %r may not be None' % u)
+            d[u] = kwargs[u]
+
+        if d:
+            ((name, value), ) = d.items()
+            if cls._bulbs_proxy.index.lookup(name, value):
+                raise Exception('Duplicate entry %s' % kwargs['label'])
         bulbs_node = cls._bulbs_proxy.create(**kwargs)
         return cls(bulbs_node)
 
 
     @classmethod
-    def get_one(cls):
-        res = cls._bulbs_proxy.get_all()
+    def get_one(cls, **kwargs):
+        res = cls.get_all(**kwargs)
         if not res:
-            raise Exception('Found no %s with label %s' % (cls.__name__, label))
-        el = cls(res.next())
+            raise Exception('Found no %s with %r' % (cls.__name__, kwargs))
+        el = res.next()
         try:
             res.next()
         except StopIteration:
             return el
         else:
-            raise Exception('Found multiple (%s) %s with label %s' % (len(res), cls.__name__, label))
+            raise Exception('Found multiple (%s) %s with %r' % (len(res), cls.__name__, kwargs))
 
 
     @classmethod
@@ -95,13 +125,14 @@ class Node(six.with_metaclass(NodeMeta, object)):
             i = cls._bulbs_proxy.index.lookup(name, value)
         else:
             i = cls._bulbs_proxy.get_all()
-        return (cls(o) for o in i or [])
+        return (cls(o) for o in i) if i else []
 
 
-    def __init__(self, bulbs_node):
-        self.P = Properties(bulbs_node)
+    def __init__(self, bulbs_node, **kwargs):
+        self.P = Properties(bulbs_node, self.properties)
+        self.update(**kwargs)
         self.E = bulbs_node
-        self.eid = bulbs_node.eid
+        self.eid = self.P['eid']
         self._bulbs_node = bulbs_node
 
 
@@ -109,7 +140,11 @@ class Node(six.with_metaclass(NodeMeta, object)):
         s = []
         for name in self.properties:
             s.append('%s: %s' % (name, self.P[name]))
-        return "%s %s" % (super(Node, self).__str__(), ', '.join(s))
+        return "{%s %s}" % (super(Node, self).__str__(), ', '.join(s))
+
+
+    def __eq__(self, node):
+        return self._bulbs_node == node._bulbs_node
 
 
     def get(self, key, default=None):
@@ -119,10 +154,17 @@ class Node(six.with_metaclass(NodeMeta, object)):
             return default
 
 
-    def update(self, d):
-        for key in self.properties:
-            if key in d:
-                self.P[key] = d[key]
+    def update(self, d=None, **kwargs):
+        d = d.copy() if d else {}
+        d.update(kwargs)
+
+        for name, obj in self.properties.iteritems():
+            if name in d:
+                # Check that altered unique properties are not already present in the db with the new value
+                if obj.unique and d[name] != self.P[name] and self.get_all(**{name: d[name]}):
+                    raise ValueError('%s with %s=%s is already present' % (self.__class__.__name__, name, d[name]))
+
+                self.P[name] = d[name]
 
 
     def save(self):
@@ -135,46 +177,6 @@ class LabeledNode(Node):
         note = String(nullable=True),
         label = String(nullable=False, unique=True),
     )
-
-
-    @classmethod
-    def create(cls, **kwargs):
-        if cls._bulbs_proxy.index.lookup(label=kwargs['label']):
-            raise Exception('Duplicate entry %s' % kwargs['label'])
-        bulbs_node = cls._bulbs_proxy.create(**kwargs)
-        return cls(bulbs_node)
-
-
-    @classmethod
-    def one_from_label(cls, label):
-        res = cls._bulbs_proxy.index.lookup(label=label)
-        if not res:
-            raise Exception('Found no %s with label %s' % (cls.__name__, label))
-        el = cls(res.next())
-        try:
-            res.next()
-        except StopIteration:
-            return el
-        else:
-            raise Exception('Found multiple (%s) %s with label %s' % (len(res), cls.__name__, label))
-
-
-    @classmethod
-    def all_from_label(cls, label):
-        res = cls._bulbs_proxy.index.lookup(label=label)
-        if not res:
-            return
-        else:
-            return (cls(o) for o in res)
-
-
-    def __unicode__(self):
-        return "<%s: %r>" % (self.__class__.__name__, self.label)
-
-    def update(self, d):
-        if d['label'] != self.P.label and self.all_from_label(d['label']):
-            raise Exception('%s with label=%s is already present' % (self.__class__.__name__, d['label']))
-        super(LabeledNode, self).update(d)
 
 
 def _get_node_classes():
