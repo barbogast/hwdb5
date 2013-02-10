@@ -2,7 +2,6 @@
 
 import argparse
 import json
-from collections import OrderedDict
 from operator import itemgetter, methodcaller, attrgetter
 
 from flask import Flask, render_template_string, jsonify, request, Markup, redirect
