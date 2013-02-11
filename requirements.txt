@@ -19,3 +19,5 @@ python-dateutil
 pytz
 six
 wsgiref
+
+#JPipy: not available for installation with pip. Please install with the package manager of your OS.
