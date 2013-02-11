@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block body %}
+    <script type="text/javascript">
+        $(function(){
+            $("#tree").dynatree({
+                persist: true,
+                onActivate: function(node){
+                    var url = '/details?type={{datatype}}&eid='+node.data.key
+                    $.ajax(url, {
+                        'success': function(data, textStatus, jqXHR){
+                            $('#tree_details').replaceWith(data);
+                        }
+                    })
+                },
+                initAjax: {
+                    url: "/json?type={{datatype}}",
+                    postProcess: function(data, dataType){
+                        // flask.jsonify denies sending json with an array as root
+                        // for security reasons. so we unwrap it here
+                        return data.children
+                    },
+                },
+            });
+        });
+    </script>
+
+  <div class="container">
+    <h1>{{heading}}</h1>
+    <div class="row">
+        <div class="span4">
+            <div id="tree"></div>
+        </div>
+        <div class="span5">
+            <div id="tree_details">Select an element to show the details</div>
+        </div>
+    </div>
+  </div>
+{% endblock %}

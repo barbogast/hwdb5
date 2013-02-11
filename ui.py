@@ -1,61 +1,10 @@
 import json
 from operator import itemgetter, methodcaller
 
-from flask import Flask, render_template_string, jsonify, request, Markup, redirect
+from flask import Flask, render_template, jsonify, request, Markup, redirect
 from flaskext.htmlbuilder import html as H
 
 from model import N
-
-
-base_template = '''
-{% extends "base.html" %}
-{% block body %}
-  <div class="container">
-    <h1>{{heading}}</h1>
-        {{content}}
-  </div>
-{% endblock %}'''
-
-
-tree_template = '''
-{% extends "base.html" %}
-{% block body %}
-    <script type="text/javascript">
-        $(function(){
-            $("#tree").dynatree({
-                persist: true,
-                onActivate: function(node){
-                    var url = '/details?type={{datatype}}&eid='+node.data.key
-                    $.ajax(url, {
-                        'success': function(data, textStatus, jqXHR){
-                            $('#tree_details').replaceWith(data);
-                        }
-                    })
-                },
-                initAjax: {
-                    url: "/json?type={{datatype}}",
-                    postProcess: function(data, dataType){
-                        // flask.jsonify denies sending json with an array as root
-                        // for security reasons. so we unwrap it here
-                        return data.children
-                    },
-                },
-            });
-        });
-    </script>
-
-  <div class="container">
-    <h1>{{heading}}</h1>
-    <div class="row">
-        <div class="span4">
-            <div id="tree"></div>
-        </div>
-        <div class="span5">
-            <div id="tree_details">Select an element to show the details</div>
-        </div>
-    </div>
-  </div>
-{% endblock %}'''
 
 
 app = Flask(__name__)
@@ -63,7 +12,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index_view():
-    return render_template_string(base_template, heading='Index', content='')
+    return render_template('normal.html', heading='Index', content='')
 
 
 @app.route('/schema/units')
@@ -101,7 +50,7 @@ def units_view():
         table,
         H.td(H.button(type='submit', name='new_form', value='new')('New')),
     )
-    return render_template_string(base_template, heading='Units', content=content)
+    return render_template('normal.html', heading='Units', content=content)
 
 
 def _render_input(values, label, name, id=None, type=''):
@@ -150,16 +99,16 @@ def edit_units():
                 form_els.append(H.input(type='hidden', name='eid', value=eid))
 
             content = H.form(method='POST')(form_els)
-        return render_template_string(base_template, heading='Really delete?', content=content)
+        return render_template('normal.html', heading='Really delete?', content=content)
 
     elif 'edit_form' in request.form:
         unit = N.Unit.from_eid(request.form['edit_form'])
         content = _mk_form(unit, 'edit', unit.eid)
-        return render_template_string(base_template, heading='Edit unit', content=content)
+        return render_template('normal.html', heading='Edit unit', content=content)
 
     elif 'new_form' in request.form:
         content = _mk_form({}, 'new', None)
-        return render_template_string(base_template, heading='Add unit', content=content)
+        return render_template('normal.html', heading='Add unit', content=content)
 
 
     elif request.form.get('action') == 'delete':
@@ -172,7 +121,7 @@ def edit_units():
         unit = N.Unit.from_eid(request.form['eid'])
         if request.form['label'] != unit.P.label and N.Unit.get_all(label=request.form['label']):
             content = _mk_form(request.form, 'edit', unit.eid, 'Unit name already taken')
-            return render_template_string(base_template, heading='Edit unit', content=content)
+            return render_template('normal.html', heading='Edit unit', content=content)
         unit.update(request.form)
         unit.save()
         return redirect('/schema/units')
@@ -180,7 +129,7 @@ def edit_units():
     elif request.form.get('action') == 'new':
         if N.Unit.get_all(label=request.form['label']):
             content = _mk_form(request.form, 'new', None, 'Unit with this unit already present')
-            return render_template_string(base_template, heading='Add unit', content=content)
+            return render_template('normal.html', heading='Add unit', content=content)
 
         N.Unit.create(**dict(request.form.iteritems()))
         return redirect('/schema/units')
@@ -215,12 +164,12 @@ def attr_types():
         ),
         H.tbody(rows)
     )
-    return render_template_string(base_template, heading='Attribute Types', content=content)
+    return render_template('normal.html', heading='Attribute Types', content=content)
 
 
 def _create_render_tree_func(url, heading, datatype):
     def func():
-        return render_template_string(tree_template, heading=heading, datatype=datatype)
+        return render_template('tree.html', heading=heading, datatype=datatype)
     app.add_url_rule(url, url.replace('/', '_'), func)
 
 _create_render_tree_func('/schema/parts', 'Part Schema', 'part_schema')
