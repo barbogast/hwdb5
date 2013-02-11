@@ -224,60 +224,73 @@ def init_node_classes():
             else:
                 g.vertices.delete(self.eid)
 
-
     N.update(locals())
 
 
-class Nodes(dict):
-        def __getattr__(self, name):
-            return self[name]
+class _RelationshipBase(Relationship):
+    @classmethod
+    def get_index_name(cls, cfg):
+        return cls.__name__
 
-N = Nodes()
+    @classmethod
+    def get_label(cls, cfg):
+        return cls.__name__
 
-class IsA(Relationship): label = "is_a"
-class BelongsTo(Relationship): label = "belongs_to"
-class ConnectedVia(Relationship): label = "connected_via"
-class ConnectedFrom(Relationship): label = "connected_from"
-class ConnectedTo(Relationship): label = "connected_to"
-class HasConnection(Relationship): label = "has_connection"
-class Implements(Relationship): label = "implements"
-class IsUnit(Relationship): label = "is_unit"
-class HasAttrType(Relationship): label = "has_attr_type"
-class CanHaveAttrTyp(Relationship): label = "can_have_attr_type"
-class HasAttribute(Relationship): label = "has_attribute"
-class CanBeContainedIn(Relationship): label = "can_be_contained_in"
-class HasConnector(Relationship):
-    label = 'has_connector'
-    quantity = Integer(nullable=False)
+    @classmethod
+    def create(cls, outV, inV, **kwargs):
+        return cls._bulbs_proxy.create(outV._bulbs_node, inV._bulbs_node, None, **kwargs)
 
-relationship_classes = (
-    IsA, BelongsTo, ConnectedVia, ConnectedFrom, ConnectedTo, HasConnection,
-    Implements, IsUnit, HasAttrType, CanHaveAttrTyp, CanBeContainedIn,
-    HasAttribute, HasConnector
-)
+
+def init_relationship_classes():
+    class IsA(_RelationshipBase): pass
+    class BelongsTo(_RelationshipBase): pass
+    class ConnectedVia(_RelationshipBase): pass
+    class ConnectedFrom(_RelationshipBase): pass
+    class ConnectedTo(_RelationshipBase): pass
+    class HasConnection(_RelationshipBase): pass
+    class Implements(_RelationshipBase): pass
+    class IsUnit(_RelationshipBase): pass
+    class HasAttrType(_RelationshipBase): pass
+    class CanHaveAttrType(_RelationshipBase): pass
+    class HasAttribute(_RelationshipBase): pass
+    class CanBeContainedIn(_RelationshipBase): pass
+    class HasConnector(_RelationshipBase):
+        quantity = Integer(nullable=False)
+
+    R.update(locals())
+
+
+class Classes(dict):
+    def __getattr__(self, name):
+        return self[name]
+
+
+N = Classes()
+R = Classes()
+
 
 class Relationships(object):
     def _init_relationships(self):
         relationships = (
-            (N.Standard,      '1', IsA,                '*', N.Standard),
-            (N.Standard,      '1', IsA,                '*', N.RootStandard),
-            (N.Connector,     '1', IsA,                '*', N.Connector),
-            (N.Connector,     '1', IsA,                '*', N.RootConnector),
-            (N.Part,          '1', IsA,                '*', N.Part),
-            (N.Part,          '*', CanBeContainedIn,   '*', N.Part),
-            (N.Part,          '1', IsA,                '*', N.RootPart),
-            (N.Part,          '1', IsA,                '*', N.ConnectionSchemaRoot),
-            (N.Part,          '*', HasConnection,      '*', N.ConnectionRoot),
-            (N.Part,          '*', HasConnector,       '*', N.Connector),
-            (N.Part,          '*', Implements,         '*', N.Standard),
-            (N.Part,          '*', HasAttribute,       '*', N.Attribute),
-            (N.Part,          '*', CanHaveAttrTyp,     '*', N.AttrType,),
-            (N.Connection,    '1', BelongsTo,          '*', N.Part),
-            (N.Connection,    '1', ConnectedVia,       '*', N.Connector),
-            (N.Connection,    '1', ConnectedFrom,      '*', N.Part),
-            (N.Connection,    '1', ConnectedTo,        '*', N.Part),
-            (N.Attribute,     '1', HasAttrType,        '*', N.AttrType),
-            (N.AttrType,      '1', IsUnit,             '*', N.Unit),
+            (N.Standard,      '1', R.IsA,                '*', N.Standard),
+            (N.Standard,      '1', R.IsA,                '*', N.RootStandard),
+            (N.Connector,     '1', R.IsA,                '*', N.Connector),
+            (N.Connector,     '1', R.IsA,                '*', N.RootConnector),
+            (N.Part,          '1', R.IsA,                '*', N.Part),
+            (N.Part,          '*', R.CanBeContainedIn,   '*', N.Part),
+            (N.Part,          '1', R.IsA,                '*', N.RootPart),
+            (N.Part,          '1', R.IsA,                '*', N.ConnectionSchemaRoot),
+            (N.Part,          '*', R.HasConnection,      '*', N.ConnectionRoot),
+            (N.Part,          '*', R.HasConnector,       '*', N.Connector),
+            (N.Part,          '*', R.Implements,         '*', N.Standard),
+            (N.Part,          '*', R.HasAttribute,       '*', N.Attribute),
+            (N.Part,          '*', R.CanHaveAttrTyp,     '*', N.AttrType,),
+            (N.Connection,    '1', R.BelongsTo,          '*', N.Part),
+            (N.Connection,    '1', R.ConnectedVia,       '*', N.Connector),
+            (N.Connection,    '1', R.ConnectedFrom,      '*', N.Part),
+            (N.Connection,    '1', R.ConnectedTo,        '*', N.Part),
+            (N.Attribute,     '1', R.HasAttrType,        '*', N.AttrType),
+            (N.AttrType,      '1', R.IsUnit,             '*', N.Unit),
         )
 
     def get_in(self, cls):

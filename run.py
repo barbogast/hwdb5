@@ -60,9 +60,9 @@ def export_xml(args):
 
 def start_ui(args):
     model.init_node_classes()
+    model.init_relationship_classes()
     g = db.init_graph()
     model.g = g
-    ui.g = g
     ui.app.debug = True
     ui.app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
     ui.app.secret_key = 'Todo'
@@ -79,11 +79,11 @@ def reset_db(args):
             return
 
     model.init_node_classes()
+    model.init_relationship_classes()
     g = db.init_graph()
-    model.g = g
-    db.g = g
     g.clear()
-    g = db.init_graph() # must initialize a second time, dont know why
+    g = db.init_graph() # must initialize a second time after clear, dont know why
+    model.g = g
     db.reset_db()
 
 

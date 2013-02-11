@@ -25,7 +25,7 @@ def units_view():
     rows = []
     for unit in units:
         attr_types = []
-        for attr_type in unit._bulbs_node.inV('is_unit') or []:
+        for attr_type in unit._bulbs_node.inV('IsUnit') or []:
             attr_types.append(attr_type.label)
 
         rows.append(H.tr(
@@ -143,10 +143,10 @@ def attr_types():
     rows = []
     attr_types = sorted(N.AttrType.get_all(), key=lambda el: el.P.label)
     for attr_type in attr_types:
-        (unit,) = attr_type._bulbs_node.outV('is_unit')
+        (unit,) = attr_type._bulbs_node.outV('IsUnit')
 
         parts = []
-        for part in attr_type._bulbs_node.inV('can_have_attr_type') or []:
+        for part in attr_type._bulbs_node.inV('CanHaveAttrType') or []:
             parts.append(part.label)
 
         rows.append(H.tr(
@@ -201,9 +201,9 @@ def _get_connections_json():
                 connectors[connector.eid].append(connector_dict)
 
         # get connected parts
-        for connection in part.outV('connected_from') or []:
+        for connection in part.outV('ConnectedFrom') or []:
             # only follow connections which belong to this connection parent
-            (this_connection_root_part,) = connection.outV('belongs_to')
+            (this_connection_root_part,) = connection.outV('BelongsTo')
             if not this_connection_root_part == connection_root_part:
                 continue
 
@@ -216,11 +216,11 @@ def _get_connections_json():
                 connector_eid = None
 
             # get the connected part
-            (childpart,) = connection.outV('connected_to')
+            (childpart,) = connection.outV('ConnectedTo')
 
             child_dict = {'title': childpart.label, 'key': childpart.eid,}
 
-            if childpart.outV('has_connection'):
+            if childpart.outV('HasConnection'):
                 # part is a connection root
                 child_dict['children'] = _get_connections_for_part(childpart, childpart)
             else:
@@ -247,7 +247,7 @@ def _get_connections_json():
 
     l = []
     root = N.ConnectionRoot.get_one()
-    for part in root._bulbs_node.inV('has_connection') or []:
+    for part in root._bulbs_node.inV('HasConnection') or []:
         connected_parts = []
         l.append({'title': part.label,
                   'key': part.eid,
@@ -261,13 +261,13 @@ def _get_attributes_json():
     attr_types = {}
     for attribute in N.Attribute.get_all():
         parts = []
-        for part in attribute._bulbs_node.inV('has_attribute'):
+        for part in attribute._bulbs_node.inV('HasAttribute'):
             parts.append(part.label)
         parts.sort()
 
         if len(parts) > 1:
-            (attr_type,) = attribute._bulbs_node.outV('has_attr_type')
-            (unit,) = attr_type.outV('is_unit')
+            (attr_type,) = attribute._bulbs_node.outV('HasAttrType')
+            (unit,) = attr_type.outV('IsUnit')
             title = unit.format % {'unit': attribute.P.value} + ' [%s]' % len(parts)
             attr_type_dict = attr_types.setdefault(attr_type.label, {'title': attr_type.label, 'children': []})
             attr_type_dict['children'].append({'title': title, 'children': parts})
@@ -284,7 +284,7 @@ def _get_attributes_json():
 
 def _get_element_json(parent_el):
     l = []
-    for element in parent_el._bulbs_node.inV('is_a') or []:
+    for element in parent_el._bulbs_node.inV('IsA') or []:
         l.append({'title': element.label,
                   'key': element.eid,
                   'isFolder': hasattr(element, 'is_schema') and element.is_schema,
@@ -295,7 +295,7 @@ def _get_element_json(parent_el):
 
 def _get_part_schema_json(parent_el):
     l = []
-    for element in parent_el._bulbs_node.inV('is_a') or []:
+    for element in parent_el._bulbs_node.inV('IsA') or []:
         if element.is_schema:
             d = {'title': element.label, 'key': element.eid }
             d['children'] = _get_part_schema_json(N.Part(element))
@@ -310,7 +310,7 @@ def _get_connection_schema_json(parent_el, edge_type):
     l = []
     for element in parent_el._bulbs_node.inV(edge_type) or []:
         d = {'title': element.label, 'key': element.eid }
-        d['children'] = _get_connection_schema_json(N.Part(element), 'can_be_contained_in')
+        d['children'] = _get_connection_schema_json(N.Part(element), 'CanBeContainedIn')
         l.append(d)
     l.sort(key=itemgetter('title'))
     return l
@@ -338,7 +338,7 @@ def json():
 
     elif data_type == 'connection_schema':
         root = N.ConnectionSchemaRoot.get_one()
-        result = _get_connection_schema_json(root, 'is_a')
+        result = _get_connection_schema_json(root, 'IsA')
 
     elif data_type == 'connections':
         result = _get_connections_json()
@@ -355,7 +355,7 @@ def json():
 @app.route('/details')
 def details():
     def _get_parents(element):
-        (parent,) = element.outV('is_a')
+        (parent,) = element.outV('IsA')
         # Hacky hacky hacky patteng
         if isinstance(parent, (N.RootConnector._bulbs_proxy.element_class,
                                N.RootPart._bulbs_proxy.element_class,
@@ -381,9 +381,9 @@ def details():
     breadcrumb = H.ul(class_='breadcrumb')(ul)
 
     dl_dict = {}
-    for attribute in element.outV('has_attribute') or []:
-        (attr_type,) = attribute.outV('has_attr_type')
-        (unit,) = attr_type.outV('is_unit')
+    for attribute in element.outV('HasAttribute') or []:
+        (attr_type,) = attribute.outV('HasAttrType')
+        (unit,) = attr_type.outV('IsUnit')
         dl_dict[attr_type.label] = unit.format % {'unit': attribute.value}
 
     dl = []
