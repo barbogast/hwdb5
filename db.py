@@ -1,9 +1,9 @@
 from logging import DEBUG
 
 from readcsv import read_all_files
+from model import N, make_bulbs_node_class, relationship_classes
 import treetools
 import data
-from model import *
 
 
 def init_graph():
@@ -202,20 +202,7 @@ def _load_connections(systems):
         assert not system_dict, system_dict
 
 
-def reset_db(args):
-    if not args.force:
-        answer = raw_input('Really import data (y,N)? ')
-        if answer != 'y':
-            print 'Abort'
-            return
-
-    global g
-    g = init_graph()
-    import model
-    model.g = g
-    g.clear()
-    g = init_graph()
-
+def reset_db():
     root_part = N.RootPart.create()
     root_standard = N.RootStandard.create()
     root_connector = N.RootConnector.create()

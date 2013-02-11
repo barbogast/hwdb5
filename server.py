@@ -1,15 +1,10 @@
-#!/usr/bin/env python
-
-import argparse
 import json
-from operator import itemgetter, methodcaller, attrgetter
+from operator import itemgetter, methodcaller
 
 from flask import Flask, render_template_string, jsonify, request, Markup, redirect
 from flaskext.htmlbuilder import html as H
-from flask_debugtoolbar import DebugToolbarExtension
 
-from model import *
-from db import reset_db, init_graph
+from model import N
 
 
 base_template = '''
@@ -450,35 +445,3 @@ def details():
     else:
         content = 'No attributes'
     return str(H.div(id='tree_details')(breadcrumb, content))
-
-def export_xml(args):
-    outf = open('export.graphml', 'w')
-    outf.write(g.get_graphml())
-
-
-def run_ui(args):
-    global g
-    g = init_graph()
-    import model
-    model.g = g
-    app.debug = True
-    app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
-    app.secret_key = 'Todo'
-    if True:
-        toolbar = DebugToolbarExtension(app)
-    app.run(host='0.0.0.0', port=5001)
-
-
-COMMANDS = {
-    'ui': run_ui,
-    'reset_db': reset_db,
-}
-
-
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('command', choices=COMMANDS.keys(), help='Run one of the commands')
-parser.add_argument('--force', action="store_true", help='Force yes on user input for the given command')
-
-args = parser.parse_args()
-
-COMMANDS[args.command](args)

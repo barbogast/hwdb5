@@ -10,7 +10,11 @@ try:
 except ImportError:
     print 'Warning: Could not import jpype, Test server wont be available'
     jpype = None
+from flask_debugtoolbar import DebugToolbarExtension
 
+import server
+import model
+import db
 
 
 def start_test_server(args):
@@ -49,8 +53,43 @@ def start_test_server(args):
         time.sleep(1000)
 
 
+def export_xml(args):
+    outf = open('export.graphml', 'w')
+    outf.write(g.get_graphml())
+
+
+def start_ui(args):
+    g = db.init_graph()
+    model.g = g
+    server.g = g
+    server.app.debug = True
+    server.app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+    server.app.secret_key = 'Todo'
+    if True:
+        toolbar = DebugToolbarExtension(server.app)
+    server.app.run(host='0.0.0.0', port=5001)
+
+
+def reset_db(args):
+    if not args.force:
+        answer = raw_input('Really import data (y,N)? ')
+        if answer != 'y':
+            print 'Abort'
+            return
+
+    g = db.init_graph()
+    model.g = g
+    db.g = g
+    g.clear()
+    g = db.init_graph() # must initialize a second time, dont know why
+    db.reset_db()
+
+
 COMMANDS = {
     'test_server': start_test_server,
+    'ui': start_ui,
+    'export_xml': export_xml,
+    'reset_db': reset_db,
 }
 
 
@@ -58,6 +97,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('command', choices=COMMANDS.keys(), help='Run one of the commands')
     parser.add_argument('--neo4j_path', default='neo4j-community-1.8.1', help='Path to the neo4j directory')
+    parser.add_argument('--force', action="store_true", help='Force yes on user input for the given command')
 
     args = parser.parse_args()
 
