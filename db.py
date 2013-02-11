@@ -1,3 +1,4 @@
+import os
 from logging import DEBUG
 
 from readcsv import read_all_files
@@ -203,14 +204,17 @@ def _load_connections(systems):
         assert not system_dict, system_dict
 
 
-def reset_db():
+def reset_db(csv_path):
     root_part = N.RootPart.create()
     root_standard = N.RootStandard.create()
     root_connector = N.RootConnector.create()
     connection_root = N.ConnectionRoot.create()
     connection_schema_root = N.ConnectionSchemaRoot.create()
 
-    csv_files = read_all_files()
+    if os.path.isfile(csv_path):
+        csv_files = read_all_files(csv_path)
+    else:
+        csv_files = {}
     print '== Import units =='
     _load_units()
     print '== Import attr types =='
@@ -228,6 +232,11 @@ def reset_db():
     print '== Import systems from data.py =='
     systems = treetools.inflate_tree(data.systems, 'connections')
     _load_connections(systems)
-    print '== Import systems from csv=='
-    _load_connections(csv_files['Pentium4_Willamette']['connections'])
+
+    if 'Pentium4_Willamette' in csv_files:
+        print '== Import systems from csv=='
+        _load_connections(csv_files['Pentium4_Willamette']['connections'])
+    else:
+        print 'Warning: csv file part Pentium4_Willamette was not found, skipping import'
+
     print 'Finished importing'

@@ -53,8 +53,11 @@ def inflate_tree(tree, csv_files=None, csv_label=None):
                             inflated_el['<connectors>'] = _inflate_list(inflated_el['<connectors>'])
                         if '<import>' in inflated_el:
                             name = inflated_el.pop('<import>')
-                            if csv_label in csv_files[name]:
-                                inflated_el.setdefault('<children>', []).extend(csv_files[name][csv_label])
+                            if name in csv_files:
+                                if csv_label in csv_files[name]:
+                                    inflated_el.setdefault('<children>', []).extend(csv_files[name][csv_label])
+                            else:
+                                print 'Warning: csv file part %s was not found, skipping import' % name
 
                     elif isinstance(v, list):
                         inflated_el['<children>'] = _inflate_list(v)

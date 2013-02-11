@@ -153,8 +153,7 @@ handlers = {
     'Pentium4_Willamette': handle_pentium4_willamette,
 }
 
-def read_all_files():
-    filepath = '/home/ben/tmp/test11.csv'
+def read_all_files(filepath):
     f = open(filepath)
     file_strings = f.read().split(FILE_SPLITTOR)
     file_strings.pop(0) #remove the first empty item

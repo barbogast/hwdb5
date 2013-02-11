@@ -84,7 +84,7 @@ def reset_db(args):
     g.clear()
     g = db.init_graph() # must initialize a second time after clear, dont know why
     model.g = g
-    db.reset_db()
+    db.reset_db(args.csv_path)
 
 
 COMMANDS = {
@@ -100,6 +100,7 @@ if __name__ == '__main__':
     parser.add_argument('command', choices=COMMANDS.keys(), help='Run one of the commands')
     parser.add_argument('--neo4j_path', default='neo4j-community-1.8.1', help='Path to the neo4j directory')
     parser.add_argument('--force', action="store_true", help='Force yes on user input for the given command')
+    parser.add_argument('--csv_path', default='/home/ben/projects/wikipedia-csv/csv/all.csv', help='Path to csv files')
 
     args = parser.parse_args()
 
