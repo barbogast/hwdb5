@@ -12,7 +12,7 @@ except ImportError:
     jpype = None
 from flask_debugtoolbar import DebugToolbarExtension
 
-import server
+import ui
 import model
 import db
 
@@ -61,13 +61,13 @@ def export_xml(args):
 def start_ui(args):
     g = db.init_graph()
     model.g = g
-    server.g = g
-    server.app.debug = True
-    server.app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
-    server.app.secret_key = 'Todo'
+    ui.g = g
+    ui.app.debug = True
+    ui.app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+    ui.app.secret_key = 'Todo'
     if True:
-        toolbar = DebugToolbarExtension(server.app)
-    server.app.run(host='0.0.0.0', port=5001)
+        toolbar = DebugToolbarExtension(ui.app)
+    ui.app.run(host='0.0.0.0', port=5001)
 
 
 def reset_db(args):
