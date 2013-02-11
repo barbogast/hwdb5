@@ -357,7 +357,9 @@ def details():
     def _get_parents(element):
         (parent,) = element.outV('is_a')
         # Hacky hacky hacky patteng
-        if isinstance(parent, (g.RootConnector.element_class, g.RootPart.element_class, g.RootStandard.element_class)):
+        if isinstance(parent, (N.RootConnector._bulbs_proxy.element_class,
+                               N.RootPart._bulbs_proxy.element_class,
+                               N.RootStandard._bulbs_proxy.element_class)):
             return []
         else:
             l = _get_parents(parent)

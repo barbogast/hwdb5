@@ -7,7 +7,7 @@ from bulbs.property import String, Integer, DateTime, Bool
 def make_bulbs_node_class(name, properties):
     dct = properties.copy()
     dct['element_type'] = name
-    return type('Bulbs'+name, (BulbsNode, ), dct)
+    return type(name, (BulbsNode, ), dct)
 
 
 class NodeMeta(type):
@@ -61,10 +61,25 @@ class Edge(object):
         return
 
 
+
+def from_eid(eid, cls=None):
+    assert eid is not None
+    bulbs_node = g.vertices.get(eid)
+    if bulbs_node is None:
+        return None
+    if cls is None:
+        cls = N[bulbs_node.element_type]
+    return cls(bulbs_node)
+
+
+
 class Node(six.with_metaclass(NodeMeta, object)):
     __mode__ = 'STRICT'
     properties = {}
     _bulbs_proxy = None
+
+
+    from_eid = classmethod(lambda cls, eid: from_eid(eid, cls))
 
 
     @classmethod
@@ -74,15 +89,6 @@ class Node(six.with_metaclass(NodeMeta, object)):
             if p.unique:
                 l.append(name)
         return l
-
-
-    @classmethod
-    def from_eid(cls, eid):
-        assert eid is not None
-        bulbs_node = g.vertices.get(eid)
-        if bulbs_node is None:
-            return None
-        return cls(bulbs_node)
 
 
     @classmethod
@@ -171,7 +177,6 @@ class Node(six.with_metaclass(NodeMeta, object)):
         self._bulbs_node.save()
 
 
-
 class LabeledNode(Node):
     properties = dict(
         note = String(nullable=True),
@@ -179,7 +184,7 @@ class LabeledNode(Node):
     )
 
 
-def _get_node_classes():
+def init_node_classes():
     class RootPart(Node): pass
     class Connector(LabeledNode): pass
     class RootConnector(Node): pass
@@ -219,21 +224,15 @@ def _get_node_classes():
             else:
                 g.vertices.delete(self.eid)
 
-    class_list = locals()
-    class Nodes(object):
-        classes = class_list
+
+    N.update(locals())
+
+
+class Nodes(dict):
         def __getattr__(self, name):
-            return class_list[name]
+            return self[name]
 
-        def iteritems(self):
-            return class_list.iteritems()
-
-        def __iter__(self):
-            return iter(class_list)
-
-    return Nodes()
-
-N = _get_node_classes()
+N = Nodes()
 
 class IsA(Relationship): label = "is_a"
 class BelongsTo(Relationship): label = "belongs_to"
@@ -257,27 +256,41 @@ relationship_classes = (
     HasAttribute, HasConnector
 )
 
-relationships = (
-    (N.Standard,      '1', IsA,                '*', N.Standard),
-    (N.Standard,      '1', IsA,                '*', N.RootStandard),
-    (N.Connector,     '1', IsA,                '*', N.Connector),
-    (N.Connector,     '1', IsA,                '*', N.RootConnector),
-    (N.Part,          '1', IsA,                '*', N.Part),
-    (N.Part,          '*', CanBeContainedIn,   '*', N.Part),
-    (N.Part,          '1', IsA,                '*', N.RootPart),
-    (N.Part,          '1', IsA,                '*', N.ConnectionSchemaRoot),
-    (N.Part,          '*', HasConnection,      '*', N.ConnectionRoot),
-    (N.Part,          '*', HasConnector,       '*', N.Connector),
-    (N.Part,          '*', Implements,         '*', N.Standard),
-    (N.Part,          '*', HasAttribute,       '*', N.Attribute),
-    (N.Part,          '*', CanHaveAttrTyp,     '*', N.AttrType,),
-    (N.Connection,    '1', BelongsTo,          '*', N.Part),
-    (N.Connection,    '1', ConnectedVia,       '*', N.Connector),
-    (N.Connection,    '1', ConnectedFrom,      '*', N.Part),
-    (N.Connection,    '1', ConnectedTo,        '*', N.Part),
-    (N.Attribute,     '1', HasAttrType,        '*', N.AttrType),
-    (N.AttrType,      '1', IsUnit,             '*', N.Unit),
-)
+class Relationships(object):
+    def _init_relationships(self):
+        relationships = (
+            (N.Standard,      '1', IsA,                '*', N.Standard),
+            (N.Standard,      '1', IsA,                '*', N.RootStandard),
+            (N.Connector,     '1', IsA,                '*', N.Connector),
+            (N.Connector,     '1', IsA,                '*', N.RootConnector),
+            (N.Part,          '1', IsA,                '*', N.Part),
+            (N.Part,          '*', CanBeContainedIn,   '*', N.Part),
+            (N.Part,          '1', IsA,                '*', N.RootPart),
+            (N.Part,          '1', IsA,                '*', N.ConnectionSchemaRoot),
+            (N.Part,          '*', HasConnection,      '*', N.ConnectionRoot),
+            (N.Part,          '*', HasConnector,       '*', N.Connector),
+            (N.Part,          '*', Implements,         '*', N.Standard),
+            (N.Part,          '*', HasAttribute,       '*', N.Attribute),
+            (N.Part,          '*', CanHaveAttrTyp,     '*', N.AttrType,),
+            (N.Connection,    '1', BelongsTo,          '*', N.Part),
+            (N.Connection,    '1', ConnectedVia,       '*', N.Connector),
+            (N.Connection,    '1', ConnectedFrom,      '*', N.Part),
+            (N.Connection,    '1', ConnectedTo,        '*', N.Part),
+            (N.Attribute,     '1', HasAttrType,        '*', N.AttrType),
+            (N.AttrType,      '1', IsUnit,             '*', N.Unit),
+        )
+
+    def get_in(self, cls):
+        rels = []
+        for out_node, out_number, edge, in_number, in_node in self.relationships:
+            if in_node == cls:
+                rels.append((out_node, out_number, in_number, edge))
+
+        return rels
+
+    #def get_mandatory_rels(self, cls):
+    #    rels = []
+    #    for out_node, out_number, edge, in_number, in_node in self.relationships:
 
 
 g = None

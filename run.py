@@ -59,6 +59,7 @@ def export_xml(args):
 
 
 def start_ui(args):
+    model.init_node_classes()
     g = db.init_graph()
     model.g = g
     ui.g = g
@@ -77,6 +78,7 @@ def reset_db(args):
             print 'Abort'
             return
 
+    model.init_node_classes()
     g = db.init_graph()
     model.g = g
     db.g = g

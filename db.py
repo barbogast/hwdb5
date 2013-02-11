@@ -24,8 +24,7 @@ def init_graph():
     #g.config.set_logger(DEBUG)
 
     for name, node_cls in N.iteritems():
-        bubls_node_cls = make_bulbs_node_class(name='Bulbs'+name,
-                                               properties=node_cls.properties)
+        bubls_node_cls = make_bulbs_node_class(name, node_cls.properties)
         g.add_proxy(node_cls.__name__, bubls_node_cls)
         node_cls._bulbs_proxy = getattr(g, node_cls.__name__)
 
