@@ -1,13 +1,7 @@
 import six
-from bulbs.model import Node as BulbsNode, Relationship
+from bulbs.model import Relationship
 from bulbs.property import String, Integer, DateTime, Bool
 
-
-
-def make_bulbs_node_class(name, properties):
-    dct = properties.copy()
-    dct['element_type'] = name
-    return type(name, (BulbsNode, ), dct)
 
 
 class NodeMeta(type):

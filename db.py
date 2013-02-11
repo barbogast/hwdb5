@@ -1,10 +1,13 @@
 import os
 from logging import DEBUG
 
+from bulbs.model import Node as BulbsNode
+
 from readcsv import read_all_files
-from model import N, R, make_bulbs_node_class
+from model import N, R
 import treetools
 import data
+
 
 
 def init_graph():
@@ -25,7 +28,9 @@ def init_graph():
     #g.config.set_logger(DEBUG)
 
     for name, node_cls in N.iteritems():
-        bubls_node_cls = make_bulbs_node_class(name, node_cls.properties)
+        dct = node_cls.properties.copy()
+        dct['element_type'] = name
+        bubls_node_cls = type(name, (BulbsNode, ), dct)
         g.add_proxy(name, bubls_node_cls)
         node_cls._bulbs_proxy = getattr(g, name)
 
