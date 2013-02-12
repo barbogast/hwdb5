@@ -18,7 +18,15 @@ def keys_have_brackets(d):
     return bool(with_brackets)
 
 
-def inflate_tree(tree, csv_files=None, csv_label=None):
+def inflate_tree(tree, csv_files=[], csv_label=None, check_unique_names=False):
+    names = set()
+
+    def _check_name(name):
+        if check_unique_names and name in names:
+            raise Exception('Found duplicate name: %r' % name)
+        names.add(name)
+
+
     """ For examples see unit tests """
     def _inflate_list(l):
         if not isinstance(l, (list, tuple)):
@@ -27,12 +35,14 @@ def inflate_tree(tree, csv_files=None, csv_label=None):
         inflated_elements = []
         for el in l:
             if isinstance(el, basestring):
+                _check_name(el)
                 inflated_elements.append({'<name>': el})
 
             elif isinstance(el, dict):
                 if keys_have_brackets(el):
                     raise WrongTreeError('The keys in this dict should not have brackets: %s; keys: %s'%(el, el.keys()))
                 for k, v in el.iteritems():
+                    _check_name(k)
                     inflated_el = { '<name>': k }
 
                     if isinstance(v, dict):

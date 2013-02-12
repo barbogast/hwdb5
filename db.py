@@ -209,7 +209,19 @@ def _load_connections(systems):
         assert not system_dict, system_dict
 
 
+def check_data():
+    # check if the data structure is correct
+    for name in 'part_schema connection_schema standards connectors parts systems'.split():
+        treetools.inflate_tree(getattr(data, name))
+
+    # check if the names are unique
+    for name in 'part_schema connection_schema standards connectors parts'.split():
+        treetools.inflate_tree(getattr(data, name), check_unique_names=True)
+
+
 def reset_db(csv_path):
+    check_data()
+
     root_part = N.RootPart.create()
     root_standard = N.RootStandard.create()
     root_connector = N.RootConnector.create()
