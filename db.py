@@ -233,7 +233,9 @@ def reset_db(csv_path):
     if os.path.isfile(csv_path):
         csv_files = read_all_files(csv_path)
     else:
+        print '%s is no path, skipping reading of csv file' % csv_path
         csv_files = {}
+
     print '== Import units =='
     _load_units()
     print '== Import attr types =='
