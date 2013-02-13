@@ -398,7 +398,7 @@ parts = [{
             'ATI Mach': ['Mach 8', 'Mach 32', 'Mach 64'],
             'ATI Rage': ['3D Rage', '3D Rage II', 'Rage XL', 'Rage Pro', 'Rage 128 VR', 'Rage 128 GL', 'Rage 128 Pro', 'Rage Fury MAXX'],
         }],
-        'ATI/AMD': [{
+        'ATI/AMD': [{ # http://en.wikipedia.org/wiki/Comparison_of_AMD_graphics_processing_units
             'ATI/AMD Desktop': [{
                 'Radeon R100': [
                     {'Radeon R100 AGP/PCI': ['Radeon 7000', 'Radeon 7100', 'Radeon 7200', 'Radeon 7500', 'Radeon 7500 LE', 'Radeon 7500 VIVO']},
@@ -430,7 +430,7 @@ parts = [{
             'ATI/AMD Mobile': [],
             'ATI/AMD Workstation': [],
         }],
-        'Nvidia': [{
+        'Nvidia': [{ # http://en.wikipedia.org/wiki/Comparison_of_Nvidia_graphics_processing_units
             'Nvidia Desktop': ['Riva', 'GeForce256', 'GeForce2', 'GeForce3', 'GeForce4', 'GeForceFX', 'GeForce6', 'GeForce7', 'GeForce8', 'GeForce9', 'GeForce100', 'GeForce200', 'GeForce300', 'GeForce400', 'GeForce500', 'GeForce600', 'GeForce700'],
             'Nvidia Mobile': ['GeForce2 Go', 'GeForce4 Go', 'GeForce FX Go 5', 'GeForce Go 6', 'GeForce Go 7', 'GeForce 8M', 'GeForce 9M', 'GeForce 100M', 'GeForce 200M', 'GeForce 300M', 'GeForce 400M', 'GeForce 500M', 'GeForce 600M', 'GeForce 700M', 'Mobility Quadro', 'GeForce Quadro NVS'],
             'Nvidia Workstation': ['Quadro', 'Quadro NVS', 'Tesla'],
@@ -492,7 +492,7 @@ systems = [{
 }]
 
 os = [{
-    'Windows': [
+    'Windows': [ # http://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions
         {
         'Windows 1': ['Windows 1.01', 'Windows 1.02', 'Windows 1.03', 'Windows 1.04'],
         'Windows 2': ['Windows 2.03', 'Windows 2.10', 'Windows 2.11'],
@@ -503,13 +503,13 @@ os = [{
         'Windows NT 4', 'Windows 95', 'Windows 98', 'Windows ME', 'Windows 2000', 'Windows XP ', 'Windows Mobile 6', 'Windows Server 2003',
         'Windows Vista', 'Windows Server 2008', 'Windows Embedded CE 6.0', 'Windows Home Server', 'Windows Phone 7', 'Windows 7', 'Windows 8'
     ],
-    'Linux': [
+    'Linux': [ # http://de.wikipedia.org/wiki/Linux_(Kernel)
         '1.0.0', '1.1', '1.2', '1.3', '2.0', '2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '2.6.20', '2.6.21', '2.6.22', '2.6.23', '2.6.24',
         '2.6.25', '2.6.26', '2.6.27', '2.6.28', '2.6.29', '2.6.30', '2.6.31', '2.6.32', '2.6.33', '2.6.34', '2.6.35', '2.6.36', '2.6.37',
         '2.6.38', '2.6.39', '3.0', '3.1', '3.2', '3.3', '3.4', '3.5', '3.6', '3.7'
     ],
     },
-    'MS-DOS',
+    'MS-DOS', # http://de.wikipedia.org/wiki/MS_DOS
     'FreeBSD',
     'NetBSD'
 
