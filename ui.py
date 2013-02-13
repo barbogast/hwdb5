@@ -1,5 +1,5 @@
 import json
-from operator import itemgetter, methodcaller
+from operator import itemgetter, methodcaller, attrgetter
 
 from flask import Flask, render_template, jsonify, request, Markup, redirect
 from flaskext.htmlbuilder import html as H
@@ -371,33 +371,87 @@ def details():
             l.append(element.label)
             return l
 
+    def _render_breadcrumb(element):
+        ul = []
+        for el in _get_parents(element):
+            li = []
+            if ul:
+                li.append(H.span(class_='divider')(H.i(class_='icon-chevron-right')))
+            li.append(el)
+            ul.append(li)
+
+        return H.ul(class_='breadcrumb')(ul)
+
+
+    def _get_attributes(element):
+        attr_dict = {}
+        for attribute in element.outV('HasAttribute') or []:
+            (attr_type,) = attribute.outV('HasAttrType')
+            (unit,) = attr_type.outV('IsUnit')
+            attr_dict[attr_type.label] = unit.format % {'unit': attribute.value}
+        return attr_dict
+
+
+    def _render_attributes(element):
+        attr_dict = _get_attributes(element)
+        dl = []
+        for name in sorted(attr_dict):
+            dl.append(H.dt(name))
+            dl.append(H.dd(Markup(attr_dict[name]))) #TODO: the use of Markup is unsafe here.
+        if dl:
+            return (H.h4('Attributes'), H.dl(dl))
+
+
+    def _render_standards(element):
+        lis = []
+        for standard in element.outV('Implements') or []:
+            lis.append(H.li(standard.label))
+        lis.sort(key=str)
+        if lis:
+            return (H.h4('Standards'), H.ul(lis))
+
+
+    def _render_subparts(element):
+        def _recursive_get_subparts(part):
+            parts = []
+            for subpart in part.inV('IsA') or []:
+                parts.append(subpart)
+                parts.extend(_recursive_get_subparts(subpart))
+            return parts
+
+        parts = _recursive_get_subparts(element)
+
+        found_attributes = set()
+        attributes = []
+        for part in parts:
+            attr_dict = _get_attributes(part)
+            found_attributes.update(attr_dict)
+            attributes.append(attr_dict)
+
+        sorted_attributes = sorted(found_attributes)
+        header_row = [H.th(name) for name in ['Name'] + sorted_attributes]
+
+        rows = []
+        for part, attr_dict in zip(parts, attributes):
+            row = [H.td(part.label)]
+            for attr_name in sorted_attributes:
+                row.append(H.td(attr_dict.get(attr_name, None)))
+            rows.append(H.tr(row))
+
+        if rows:
+            table = H.table(class_='table table-condensed table-bordered')(H.thead(header_row), H.tbody(rows))
+            return (H.h3('Subparts'), H.div(class_='detail_table')(table))
+
+
     data_type = request.args['type']
     eid = request.args['eid']
     element = g.vertices.get(eid)
 
-    ul = []
-    for el in _get_parents(element):
-        li = []
-        if ul:
-            li.append(H.span(class_='divider')(H.i(class_='icon-chevron-right')))
-        li.append(el)
-        ul.append(li)
+    breadcrumb = _render_breadcrumb(element)
+    attributes = _render_attributes(element)
+    standards = _render_standards(element)
+    subparts = _render_subparts(element)
 
-    breadcrumb = H.ul(class_='breadcrumb')(ul)
-
-    dl_dict = {}
-    for attribute in element.outV('HasAttribute') or []:
-        (attr_type,) = attribute.outV('HasAttrType')
-        (unit,) = attr_type.outV('IsUnit')
-        dl_dict[attr_type.label] = unit.format % {'unit': attribute.value}
-
-    dl = []
-    for name in sorted(dl_dict):
-        dl.append(H.dt(name))
-        dl.append(H.dd(Markup(dl_dict[name]))) #TODO: the use of Markup is unsafe here.
-
-    if dl:
-        content = H.dl(dl)
-    else:
-        content = 'No attributes'
-    return str(H.div(id='tree_details')(breadcrumb, content))
+    content = (H.h4('Attributes'), attributes,
+               H.h4('Standards'), standards, None)
+    return str(H.div(id='tree_details')(breadcrumb, attributes, standards, subparts))
