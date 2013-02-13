@@ -63,6 +63,7 @@ def start_ui(args):
     model.init_relationship_classes()
     g = db.init_graph()
     model.g = g
+    ui.g = g
     ui.app.debug = True
     ui.app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
     ui.app.secret_key = 'Todo'
