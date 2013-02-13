@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block body %}
     <script type="text/javascript">
-        $(function(){
-            $("#tree").dynatree({
+        function initTree(selector, treeUrl){
+            $(selector).dynatree({
                 persist: true,
                 onActivate: function(node){
                     var url = '/details?type={{datatype}}&eid='+node.data.key
@@ -13,7 +13,7 @@
                     })
                 },
                 initAjax: {
-                    url: "/json?type={{datatype}}",
+                    url: treeUrl,
                     postProcess: function(data, dataType){
                         // flask.jsonify denies sending json with an array as root
                         // for security reasons. so we unwrap it here
@@ -21,6 +21,10 @@
                     },
                 },
             });
+        };
+
+        $(function(){
+            initTree("#tree", "/json?type={{datatype}}");
         });
     </script>
 

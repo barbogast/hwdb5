@@ -182,7 +182,7 @@ _create_render_tree_func('/data/attributes', 'Attributes', 'attributes')
 _create_render_tree_func('/schema/os', 'Operating Systems', 'os')
 
 
-def _get_connections_json():
+def _get_connections_json(eid):
     def _get_connections_for_part(connection_root_part, part):
         # key=connecor.eid, value=list_of_connector_dicts
         connectors = {}
@@ -247,14 +247,21 @@ def _get_connections_json():
 
 
     l = []
-    root = N.ConnectionRoot.get_one()
-    for part in root._bulbs_node.inV('HasConnection') or []:
-        connected_parts = []
-        l.append({'title': part.label,
+    if eid:
+        part = N.Part.from_eid(eid)
+        l.append({'title': part.P.label,
                   'key': part.eid,
-                  'children': _get_connections_for_part(part, part),
+                  'children': _get_connections_for_part(part._bulbs_node, part._bulbs_node),
         })
-    l.sort(key=itemgetter('title'))
+    else:
+        root = N.ConnectionRoot.get_one()
+        for part in root._bulbs_node.inV('HasConnection') or []:
+            connected_parts = []
+            l.append({'title': part.label,
+                      'key': part.eid,
+                      'children': _get_connections_for_part(part, part),
+            })
+        l.sort(key=itemgetter('title'))
     return l
 
 
@@ -346,7 +353,8 @@ def json():
         result = _get_connection_schema_json(root, 'IsAConnectionSchemaRoot')
 
     elif data_type == 'connections':
-        result = _get_connections_json()
+        eid = request.args.get('eid')
+        result = _get_connections_json(eid)
 
     elif data_type == 'attributes':
         result = _get_attributes_json()
@@ -443,6 +451,12 @@ def details():
             return (H.h3('Subparts'), H.div(class_='detail_table')(table))
 
 
+    def _render_contained_parts(element):
+        if element.outE('HasConnection'):
+            script = Markup('initTree("#containing_tree", "/json?type=connections&eid=%s");' % element.eid) # TODO: Unsafe?
+            return (H.H3('Contained parts'), H.div(id='containing_tree')(H.script(script)))
+
+
     data_type = request.args['type']
     eid = request.args['eid']
     element = g.vertices.get(eid)
@@ -450,8 +464,9 @@ def details():
     breadcrumb = _render_breadcrumb(element)
     attributes = _render_attributes(element)
     standards = _render_standards(element)
+    contained_parts = _render_contained_parts(element)
     subparts = _render_subparts(element)
 
     content = (H.h4('Attributes'), attributes,
                H.h4('Standards'), standards, None)
-    return str(H.div(id='tree_details')(breadcrumb, attributes, standards, subparts))
+    return str(H.div(id='tree_details')(breadcrumb, attributes, standards, contained_parts, subparts))
