@@ -127,29 +127,25 @@ def _add_element(el_dict, parent_el, element_type, root_element_node, extra_prop
     assert not el_dict, el_dict
 
 
-def _load_part_schema(csv_files):
-    root_part = N.RootPart.get_one()
+def _load_part_schema(root_part, csv_files):
     parts = treetools.inflate_tree(data.part_schema, csv_files, 'parts')
     for part_dict in parts:
         _add_element(part_dict, None, N.Part, root_part, extra_properties={'is_schema': True})
 
 
-def _load_standards(csv_files):
-    root_standard = N.RootStandard.get_one()
+def _load_standards(root_standard, csv_files):
     standards = treetools.inflate_tree(data.standards, csv_files, 'standards')
     for standard_dict in standards:
         _add_element(standard_dict, None, N.Standard, root_standard)
 
 
-def _load_connectors(csv_files):
-    root_connector = N.RootConnector.get_one()
+def _load_connectors(root_connector, csv_files):
     connectors = treetools.inflate_tree(data.connectors, csv_files, 'connectors')
     for connector_dict in connectors:
         _add_element(connector_dict, None, N.Connector, root_connector)
 
 
-def _load_operating_systems(csv_files):
-    root_os = N.RootOperatingSystem.get_one()
+def _load_operating_systems(root_os, csv_files):
     osses = treetools.inflate_tree(data.os, csv_files, 'operating_systems')
     for os_dict in osses:
         _add_element(os_dict, None, N.OperatingSystem, root_os)
@@ -165,14 +161,13 @@ def _load_parts(csv_files):
         assert not part_dict, part_dict
 
 
-def _load_connection_schema():
+def _load_connection_schema(connection_schema_root):
     def _add_connection_schema(parent_part, child_part_dicts):
         for child_part_dict in child_part_dicts:
             child_part = N.Part.get_one(label=child_part_dict.pop('<name>'))
             R.CanBeContainedIn.create(child_part, parent_part)
             _add_connection_schema(child_part, child_part_dict.pop('<children>', []))
 
-    connection_schema_root = N.ConnectionSchemaRoot.get_one()
     connections = treetools.inflate_tree(data.connection_schema)
     for root_part_dict in connections:
         root_part = N.Part.get_one(label=root_part_dict.pop('<name>'))
@@ -182,7 +177,7 @@ def _load_connection_schema():
         assert not root_part_dict
 
 
-def _load_connections(systems):
+def _load_connections(connection_root, systems):
     def _create_connection(system_part, parent_part, child_dict, connector):
         child_part = N.Part.get_one(label=child_dict.pop('<name>'))
         connection = N.Connection.create(quantity=child_dict.pop('<quantity>', 1))
@@ -208,7 +203,6 @@ def _load_connections(systems):
         assert not part_dict, part_dict
 
 
-    connection_root = N.ConnectionRoot.get_one()
     for system_dict in systems:
         system_part = N.Part.get_one(label=system_dict.pop('<name>'))
         R.HasConnection.create(system_part, connection_root)
@@ -245,24 +239,24 @@ def reset_db(csv_path):
     print '== Import attr types =='
     _load_attr_types()
     print '== Import operating systems =='
-    _load_operating_systems(csv_files)
+    _load_operating_systems(operating_system_root, csv_files)
     print '== Import part schema =='
-    _load_part_schema(csv_files)
+    _load_part_schema(root_part, csv_files)
     print '== Import connection schema =='
-    _load_connection_schema()
+    _load_connection_schema(connection_root)
     print '== Import standards =='
-    _load_standards(csv_files)
+    _load_standards(root_standard, csv_files)
     print '== Import connectors =='
-    _load_connectors(csv_files)
+    _load_connectors(root_connector, csv_files)
     print '== Import parts =='
     _load_parts(csv_files)
     print '== Import systems from data.py =='
     systems = treetools.inflate_tree(data.systems, 'connections')
-    _load_connections(systems)
+    _load_connections(connection_root, systems)
 
     if 'Pentium4_Willamette' in csv_files:
         print '== Import systems from csv=='
-        _load_connections(csv_files['Pentium4_Willamette']['connections'])
+        _load_connections(connection_root, csv_files['Pentium4_Willamette']['connections'])
     else:
         print 'Warning: csv file part Pentium4_Willamette was not found, skipping import'
 
