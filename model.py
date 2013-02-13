@@ -187,6 +187,8 @@ def init_node_classes():
     class RootStandard(Node): pass
     class Standard(LabeledNode): pass
     class AttrType(LabeledNode): pass
+    class OperatingSystem(LabeledNode): pass
+    class RootOperatingSystem(Node): pass
 
     class Part(LabeledNode):
         properties = dict(

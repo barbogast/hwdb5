@@ -148,6 +148,13 @@ def _load_connectors(csv_files):
         _add_element(connector_dict, None, N.Connector, root_connector)
 
 
+def _load_operating_systems(csv_files):
+    root_os = N.RootOperatingSystem.get_one()
+    osses = treetools.inflate_tree(data.os, csv_files, 'operating_systems')
+    for os_dict in osses:
+        _add_element(os_dict, None, N.OperatingSystem, root_os)
+
+
 def _load_parts(csv_files):
     parts = treetools.inflate_tree(data.parts, csv_files, 'parts')
     for part_dict in parts:
@@ -227,6 +234,7 @@ def reset_db(csv_path):
     root_connector = N.RootConnector.create()
     connection_root = N.ConnectionRoot.create()
     connection_schema_root = N.ConnectionSchemaRoot.create()
+    operating_system_root = N.RootOperatingSystem.create()
 
     if os.path.isfile(csv_path):
         csv_files = read_all_files(csv_path)
@@ -236,6 +244,8 @@ def reset_db(csv_path):
     _load_units()
     print '== Import attr types =='
     _load_attr_types()
+    print '== Import operating systems =='
+    _load_operating_systems(csv_files)
     print '== Import part schema =='
     _load_part_schema(csv_files)
     print '== Import connection schema =='

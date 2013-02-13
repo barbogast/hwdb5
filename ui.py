@@ -179,6 +179,7 @@ _create_render_tree_func('/schema/connections', 'Connection schema', 'connection
 _create_render_tree_func('/data/parts', 'Parts', 'parts')
 _create_render_tree_func('/data/connections', 'Connections', 'connections')
 _create_render_tree_func('/data/attributes', 'Attributes', 'attributes')
+_create_render_tree_func('/schema/os', 'Operating Systems', 'os')
 
 
 def _get_connections_json():
@@ -330,6 +331,10 @@ def json():
 
     elif data_type == 'connectors':
         root = N.RootConnector.get_one()
+        result = _get_element_json(root)
+
+    elif data_type == 'os':
+        root = N.RootOperatingSystem.get_one()
         result = _get_element_json(root)
 
     elif data_type == 'part_schema':
