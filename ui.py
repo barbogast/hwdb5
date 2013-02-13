@@ -306,8 +306,8 @@ def _get_part_schema_json(parent_el):
 
 
 def _get_connection_schema_json(parent_el, edge_type):
-    # the function is called the first time with edge_type='is_a'
-    # all inner calls have edge_type='can_contain'
+    # the function is called the first time with edge_type='IsAConnectionSchemaRoot'
+    # all inner calls have edge_type='CanBeContainedIn'
     l = []
     for element in parent_el._bulbs_node.inV(edge_type) or []:
         d = {'title': element.label, 'key': element.eid }
@@ -343,7 +343,7 @@ def json():
 
     elif data_type == 'connection_schema':
         root = N.ConnectionSchemaRoot.get_one()
-        result = _get_connection_schema_json(root, 'IsA')
+        result = _get_connection_schema_json(root, 'IsAConnectionSchemaRoot')
 
     elif data_type == 'connections':
         result = _get_connections_json()

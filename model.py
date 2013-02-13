@@ -247,6 +247,7 @@ def init_relationship_classes():
     class Implements(_RelationshipBase): pass
     class IsUnit(_RelationshipBase): pass
     class HasAttrType(_RelationshipBase): pass
+    class IsAConnectionSchemaRoot(_RelationshipBase): pass
     class CanHaveAttrType(_RelationshipBase): pass
     class HasAttribute(_RelationshipBase): pass
     class CanBeContainedIn(_RelationshipBase): pass

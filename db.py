@@ -171,7 +171,7 @@ def _load_connection_schema(connection_schema_root):
     connections = treetools.inflate_tree(data.connection_schema)
     for root_part_dict in connections:
         root_part = N.Part.get_one(label=root_part_dict.pop('<name>'))
-        R.IsA.create(root_part, connection_schema_root)
+        R.IsAConnectionSchemaRoot.create(root_part, connection_schema_root)
         _add_connection_schema(root_part, root_part_dict.pop('<children>'))
 
         assert not root_part_dict
@@ -245,7 +245,7 @@ def reset_db(csv_path):
     print '== Import part schema =='
     _load_part_schema(root_part, csv_files)
     print '== Import connection schema =='
-    _load_connection_schema(connection_root)
+    _load_connection_schema(connection_schema_root)
     print '== Import standards =='
     _load_standards(root_standard, csv_files)
     print '== Import connectors =='
