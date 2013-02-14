@@ -68,7 +68,6 @@ def from_eid(eid, cls=None):
 
 
 class Node(six.with_metaclass(NodeMeta, object)):
-    __mode__ = 'STRICT'
     properties = {}
     _bulbs_proxy = None
 

@@ -9,6 +9,13 @@ import treetools
 import data
 
 
+def make_bulbs_node_class(g, name, dct):
+    dct['element_type'] = name
+    dct['__mode__'] = 'STRICT'
+    bubls_node_cls = type(name, (BulbsNode, ), dct)
+    g.add_proxy(name, bubls_node_cls)
+    return getattr(g, name)
+
 
 def init_graph():
     engine = 'neo4j'
@@ -29,10 +36,7 @@ def init_graph():
 
     for name, node_cls in N.iteritems():
         dct = node_cls.properties.copy()
-        dct['element_type'] = name
-        bubls_node_cls = type(name, (BulbsNode, ), dct)
-        g.add_proxy(name, bubls_node_cls)
-        node_cls._bulbs_proxy = getattr(g, name)
+        node_cls._bulbs_proxy = make_bulbs_node_class(g, name, dct)
 
     for name, rel_cls in R.iteritems():
         g.add_proxy(name, rel_cls)

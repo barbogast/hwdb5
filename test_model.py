@@ -39,9 +39,7 @@ def init_test_graph(engine='neo4j'):
     #g.config.set_logger(DEBUG)
 
     for name, node_cls in (('MyNode', MyNode), ('MyNode2', MyNode2)):
-        bubls_node_cls = make_bulbs_node_class(name,  node_cls.properties)
-        g.add_proxy(name, bubls_node_cls)
-        node_cls._bulbs_proxy = getattr(g, name)
+        node_cls._bulbs_proxy = make_bulbs_node_class(g, name, node_cls.properties.copy())
 
     return g
 
