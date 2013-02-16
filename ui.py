@@ -4,7 +4,7 @@ from operator import itemgetter, methodcaller, attrgetter
 from flask import Flask, render_template, jsonify, request, Markup, redirect
 from flaskext.htmlbuilder import html as H
 
-from model import N
+from model import g
 
 
 app = Flask(__name__)
@@ -18,7 +18,7 @@ def index_view():
 @app.route('/schema/units')
 def units_view():
     units = []
-    for unit in N.Unit.get_all():
+    for unit in g.Unit.get_all():
         units.append(unit)
     units.sort(key=lambda u: u.P.label.lower())
 
@@ -81,7 +81,7 @@ def _mk_form(unit, action, eid, msg=''):
 def edit_units():
     if 'delete_form' in request.form:
         eid = request.form['delete_form']
-        unit = N.Unit.from_eid(eid)
+        unit = g.get_from_eid(eid)
         attr_types = unit.get_attr_types()
 
         if attr_types:
@@ -102,7 +102,7 @@ def edit_units():
         return render_template('normal.html', heading='Really delete?', content=content)
 
     elif 'edit_form' in request.form:
-        unit = N.Unit.from_eid(request.form['edit_form'])
+        unit = g.Unit.from_eid(request.form['edit_form'])
         content = _mk_form(unit, 'edit', unit.eid)
         return render_template('normal.html', heading='Edit unit', content=content)
 
@@ -112,14 +112,14 @@ def edit_units():
 
 
     elif request.form.get('action') == 'delete':
-        unit = N.Unit.from_eid(request.form['eid'])
+        unit = g.Unit.from_eid(request.form['eid'])
         if unit:
             unit.delete()
         return redirect('/schema/units')
 
     elif request.form.get('action') == 'edit':
-        unit = N.Unit.from_eid(request.form['eid'])
-        if request.form['label'] != unit.P.label and N.Unit.get_all(label=request.form['label']):
+        unit = g.get_from_eid(request.form['eid'])
+        if request.form['label'] != unit.P.label and g.Unit.get_all(label=request.form['label']):
             content = _mk_form(request.form, 'edit', unit.eid, 'Unit name already taken')
             return render_template('normal.html', heading='Edit unit', content=content)
         unit.update(request.form)
@@ -127,11 +127,11 @@ def edit_units():
         return redirect('/schema/units')
 
     elif request.form.get('action') == 'new':
-        if N.Unit.get_all(label=request.form['label']):
+        if g.Unit.get_all(label=request.form['label']):
             content = _mk_form(request.form, 'new', None, 'Unit with this unit already present')
             return render_template('normal.html', heading='Add unit', content=content)
 
-        N.Unit.create(**dict(request.form.iteritems()))
+        g.Unit.create(**dict(request.form.iteritems()))
         return redirect('/schema/units')
 
     else:
@@ -141,7 +141,7 @@ def edit_units():
 @app.route('/schema/attr_types')
 def attr_types():
     rows = []
-    attr_types = sorted(N.AttrType.get_all(), key=lambda el: el.P.label)
+    attr_types = sorted(g.AttrType.get_all(), key=lambda el: el.P.label)
     for attr_type in attr_types:
         (unit,) = attr_type._bulbs_node.outV('IsUnit')
 
@@ -248,13 +248,13 @@ def _get_connections_json(eid):
 
     l = []
     if eid:
-        part = N.Part.from_eid(eid)
+        part = g.get_from_eid(eid)
         l.append({'title': part.P.label,
                   'key': part.eid,
                   'children': _get_connections_for_part(part._bulbs_node, part._bulbs_node),
         })
     else:
-        root = N.ConnectionRoot.get_one()
+        root = g.ConnectionRoot.get_one()
         for part in root._bulbs_node.inV('HasConnection') or []:
             connected_parts = []
             l.append({'title': part.label,
@@ -267,7 +267,7 @@ def _get_connections_json(eid):
 
 def _get_attributes_json():
     attr_types = {}
-    for attribute in N.Attribute.get_all():
+    for attribute in g.Attribute.get_all():
         parts = []
         for part in attribute._bulbs_node.inV('HasAttribute'):
             parts.append(part.label)
@@ -296,7 +296,7 @@ def _get_element_json(parent_el):
         l.append({'title': element.label,
                   'key': element.eid,
                   'isFolder': hasattr(element, 'is_schema') and element.is_schema,
-                  'children': _get_element_json(N.Part(element))})
+                  'children': _get_element_json(g.Part(g, element))})
     l.sort(key=itemgetter('title'))
     return l
 
@@ -306,7 +306,7 @@ def _get_part_schema_json(parent_el):
     for element in parent_el._bulbs_node.inV('IsA') or []:
         if element.is_schema:
             d = {'title': element.label, 'key': element.eid }
-            d['children'] = _get_part_schema_json(N.Part(element))
+            d['children'] = _get_part_schema_json(g.Part(g, element))
             l.append(d)
     l.sort(key=itemgetter('title'))
     return l
@@ -318,7 +318,7 @@ def _get_connection_schema_json(parent_el, edge_type):
     l = []
     for element in parent_el._bulbs_node.inV(edge_type) or []:
         d = {'title': element.label, 'key': element.eid }
-        d['children'] = _get_connection_schema_json(N.Part(element), 'CanBeContainedIn')
+        d['children'] = _get_connection_schema_json(g.Part(g, element), 'CanBeContainedIn')
         l.append(d)
     l.sort(key=itemgetter('title'))
     return l
@@ -329,27 +329,27 @@ def json():
     data_type = request.args['type']
 
     if data_type == 'parts':
-        root = N.RootPart.get_one()
+        root = g.RootPart.get_one()
         result = _get_element_json(root)
 
     elif data_type == 'standards':
-        root = N.RootStandard.get_one()
+        root = g.RootStandard.get_one()
         result = _get_element_json(root)
 
     elif data_type == 'connectors':
-        root = N.RootConnector.get_one()
+        root = g.RootConnector.get_one()
         result = _get_element_json(root)
 
     elif data_type == 'os':
-        root = N.RootOperatingSystem.get_one()
+        root = g.RootOperatingSystem.get_one()
         result = _get_element_json(root)
 
     elif data_type == 'part_schema':
-        root = N.RootPart.get_one()
+        root = g.RootPart.get_one()
         result = _get_part_schema_json(root)
 
     elif data_type == 'connection_schema':
-        root = N.ConnectionSchemaRoot.get_one()
+        root = g.ConnectionSchemaRoot.get_one()
         result = _get_connection_schema_json(root, 'IsAConnectionSchemaRoot')
 
     elif data_type == 'connections':
@@ -370,9 +370,9 @@ def details():
     def _get_parents(element):
         (parent,) = element.outV('IsA')
         # Hacky hacky hacky patteng
-        if isinstance(parent, (N.RootConnector._bulbs_proxy.element_class,
-                               N.RootPart._bulbs_proxy.element_class,
-                               N.RootStandard._bulbs_proxy.element_class)):
+        if isinstance(parent, (g.RootConnector._bulbs_proxy.element_class,
+                               g.RootPart._bulbs_proxy.element_class,
+                               g.RootStandard._bulbs_proxy.element_class)):
             return []
         else:
             l = _get_parents(parent)

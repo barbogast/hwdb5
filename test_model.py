@@ -4,8 +4,7 @@ from logging import DEBUG
 from bulbs.property import String, Integer, DateTime, Bool
 from bulbs.model import Node as BulbsNode
 
-from model import N, Node, Properties, from_eid
-from db import make_bulbs_node_class
+from model import Node, Properties, Graph
 
 
 
@@ -14,32 +13,35 @@ class MyNode(Node):
         prop1 = String(nullable=False),
         prop2 = Integer(),
     )
-N['MyNode'] = MyNode
 
 class MyNode2(Node):
     properties = dict(
         prop1 = String(nullable=False),
         prop2 = Integer(unique=True),
     )
-N['MyNode2'] = MyNode2
+
+class MyNode3(Node):
+    properties = dict()
 
 
 def init_test_graph(engine='neo4j'):
     if engine == 'rexster':
-        from bulbs.rexster import Graph, Config
+        from bulbs.rexster import Graph as BulbsGraph, Config
         url = 'http://localhost:8182/graphs/hwdbgraph'
     elif engine == 'neo4j':
-        from bulbs.neo4jserver import Graph, Config
+        from bulbs.neo4jserver import Graph as BulbsGraph, Config
         url = 'http://localhost:7474/db/data/'
     else:
         raise Exception('Unknown engine %s' % engine)
 
     config = Config(url)
-    g = Graph(config)
+    bg = BulbsGraph(config)
+    g = Graph()
+    g.set_bulbs_graph(bg)
     #g.config.set_logger(DEBUG)
 
-    for name, node_cls in (('MyNode', MyNode), ('MyNode2', MyNode2)):
-        node_cls._bulbs_proxy = make_bulbs_node_class(g, name, node_cls.properties.copy())
+    for node_cls in (MyNode, MyNode2, MyNode3):
+        g.register_class(node_cls)
 
     return g
 
@@ -90,37 +92,39 @@ class Test_Node(TestCase):
 
     def setUp(self):
         self.g = init_test_graph()
-        import model
-        model.g = self.g
         self.g.clear()
         self.g = init_test_graph()
 
     def test_get_one(self):
-        node = MyNode.create(prop1='x')
-        self.assert_equal(MyNode.get_one(), node)
+        node = self.g.MyNode.create(prop1='x')
+        self.assert_equal(self.g.MyNode.get_one(), node)
 
-        MyNode.create(prop1='y')
-        self.assert_equal(MyNode.get_one(prop1='x'), node)
+        self.g.MyNode.create(prop1='y')
+        self.assert_equal(self.g.MyNode.get_one(prop1='x'), node)
+
+    def test_get_one_without_property(self):
+        node = self.g.MyNode3.create()
+        self.assert_equal(self.g.MyNode3.get_one(), node)
 
     def test_get_one_of_none(self):
         """ Node.get_one() should raise an Exception if it finds
         no Node in the db """
-        self.assertRaises(Exception, MyNode.get_one)
+        self.assertRaises(Exception, self.g.MyNode.get_one)
 
     def test_get_one_of_two(self):
         """ Node.get_one() should raise an Exception if it finds
         multiple Nodes in the db """
-        node1 = MyNode.create(prop1='x')
-        node2 = MyNode.create(prop1='y')
-        self.assertRaises(Exception, MyNode.get_one)
+        node1 = self.g.MyNode.create(prop1='x')
+        node2 = self.g.MyNode.create(prop1='y')
+        self.assertRaises(Exception, self.g.MyNode.get_one)
 
     def test_eq(self):
         """ test Node.__eq__ """
-        node1 = MyNode.create(prop1='x')
-        node2 = MyNode.create(prop1='y')
+        node1 = self.g.MyNode.create(prop1='x')
+        node2 = self.g.MyNode.create(prop1='y')
 
-        (returned_node1,) = MyNode.get_all(prop1='x')
-        (returned_node2,) = MyNode.get_all(prop1='y')
+        (returned_node1,) = self.g.MyNode.get_all(prop1='x')
+        (returned_node2,) = self.g.MyNode.get_all(prop1='y')
 
         self.assert_equal(node1, returned_node1)
         self.assert_equal(node2, returned_node2)
@@ -128,35 +132,35 @@ class Test_Node(TestCase):
 
     def test_get_all(self):
         nodes = set([
-            MyNode.create(prop1='x'),
-            MyNode.create(prop1='y'),
+            self.g.MyNode.create(prop1='x'),
+            self.g.MyNode.create(prop1='y'),
         ])
-        result = list(MyNode.get_all())
+        result = list(self.g.MyNode.get_all())
         for n in nodes:
             self.assertIn(n, result)
 
     def test_get_all_with_property(self):
-        node1 = MyNode.create(prop1='x')
-        node2 = MyNode.create(prop1='y')
+        node1 = self.g.MyNode.create(prop1='x')
+        node2 = self.g.MyNode.create(prop1='y')
 
-        result = list(MyNode.get_all(prop1='y'))
+        result = list(self.g.MyNode.get_all(prop1='y'))
         self.assertEqual(result, [node2])
 
     @expectedFailure
     def test_get_all_with_multiple_properties(self):
-        node1 = MyNode.create(prop1='x', prop2=1)
-        node2 = MyNode.create(prop1='x')
+        node1 = self.g.MyNode.create(prop1='x', prop2=1)
+        node2 = self.g.MyNode.create(prop1='x')
 
-        result = list(MyNode.get_all(prop1='x', prop2=1))
+        result = list(self.g.MyNode.get_all(prop1='x', prop2=1))
         self.assertEqual(result, [node1])
 
     def test_get_all_with_property_none(self):
-        node1 = MyNode.create(prop1='x')
-        result = list(MyNode.get_all(prop1='y'))
+        node1 = self.g.MyNode.create(prop1='x')
+        result = list(self.g.MyNode.get_all(prop1='y'))
         self.assertEqual(result, [])
 
     def test_get_all_of_none(self):
-        self.assertEqual(MyNode.get_all(), [])
+        self.assertEqual(self.g.MyNode.get_all(), [])
 
     def test_get_unique_properties(self):
         l = MyNode2._get_unique_properties()
@@ -164,7 +168,7 @@ class Test_Node(TestCase):
 
 
     def test_update(self):
-        n = MyNode(BulbsNode(None), prop1='x')
+        n = MyNode(None, BulbsNode(None), prop1='x')
         n.update(prop1='xx', prop2='y')
         self.assertEqual(n.P['prop1'], 'xx')
         self.assertEqual(n.P['prop2'], 'y')
@@ -177,9 +181,9 @@ class Test_Node(TestCase):
 
 
     def test_update_unique(self):
-        n1 = MyNode2.create(prop1='x', prop2=1)
+        n1 = self.g.MyNode2.create(prop1='x', prop2=1)
 
-        n2 = MyNode2.create(prop1='x', prop2=2)
+        n2 = self.g.MyNode2.create(prop1='x', prop2=2)
         n2.update(prop1='xx', prop2=3) # change to a new unique value
         n2.save()
 
@@ -193,21 +197,21 @@ class Test_Node(TestCase):
     def test_create_with_unique(self):
         with self.assertRaises(ValueError):
             # unique values may not be None
-            MyNode2.create()
+            self.g.MyNode2.create()
 
-        MyNode2.create(prop1='x', prop2=1)
-        MyNode2.create(prop1='x', prop2=2)
+        self.g.MyNode2.create(prop1='x', prop2=1)
+        self.g.MyNode2.create(prop1='x', prop2=2)
 
         with self.assertRaises(Exception):
-            MyNode2.create(prop1='x', prop2=1)
+            self.g.create(MyNode2, prop1='x', prop2=1)
 
 
     def test_from_eid(self):
-        n = MyNode.create(prop1='x')
-        res = MyNode.from_eid(n.eid)
+        n = self.g.MyNode.create(prop1='x')
+        res = self.g.get_from_eid(n.eid)
         self.assertIsInstance(res, MyNode)
 
-        res2 = from_eid(n.eid)
+        res2 = self.g.get_from_eid(n.eid)
         self.assertIsInstance(res2, MyNode)
 
 
