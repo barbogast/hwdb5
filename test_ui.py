@@ -2,12 +2,12 @@ import time
 import json
 import unittest
 
-import model
+from model import g, init_relationship_classes, init_graph
 import ui
 
 
-model.init_relationship_classes()
-model.init_graph(model.g)
+init_relationship_classes()
+init_graph(g)
 
 
 
@@ -65,7 +65,7 @@ class Test_UI(unittest.TestCase):
         self.assertIn('Attribute Types', rv.data)
 
     def test_details(self):
-        part = model.g.Part.get_one(label='Intel Pentium 4 2.80GHz 15.2.9')
+        part = g.Part.get_one(label='Intel Pentium 4 2.80GHz 15.2.9')
         rv = self.app.get('/details?eid=%s&type=part' % part.eid)
         self.assertIn('Intel Pentium 4 2.80GHz 15.2.9', rv.data)
 
@@ -81,7 +81,7 @@ class Test_Unit(unittest.TestCase):
         self.assertIn('Units', rv.data)
 
     def test_units_delete_not_allowed(self):
-        one_unit = model.g.Unit.get_all().next()
+        one_unit = g.Unit.get_all().next()
         rv = self.app.post('/schema/edit_units', data={'delete_form': one_unit.eid})
 
         self.assertNotIn('Yes', rv.data)
@@ -89,7 +89,7 @@ class Test_Unit(unittest.TestCase):
 
 
     def test_units_delete_allowed(self):
-        one_unit = model.g.Unit.create(label='testestest %s' % time.time(),
+        one_unit = g.Unit.create(label='testestest %s' % time.time(),
                                        name='xx', format='yy')
         rv = self.app.post('/schema/edit_units', data={'delete_form': one_unit.eid})
 
@@ -109,7 +109,7 @@ class Test_Unit(unittest.TestCase):
 
         self.assertEqual(302, rv.status_code)
 
-        one_unit = model.g.Unit.get_one(label=data['label'])
+        one_unit = g.Unit.get_one(label=data['label'])
         self.assertEqual(one_unit.P.name, data['name'])
         self.assertEqual(one_unit.P.label, data['label'])
         self.assertEqual(one_unit.P.format, data['format'])
@@ -118,7 +118,7 @@ class Test_Unit(unittest.TestCase):
 
     def test_units_new_duplicate(self):
         label = 'testestest %s' % time.time()
-        one_unit = model.g.Unit.create(label=label, name='xx', format='yy')
+        one_unit = g.Unit.create(label=label, name='xx', format='yy')
 
         data = {
             'action': 'new',
@@ -145,7 +145,7 @@ class Test_Unit(unittest.TestCase):
 
         self.assertEqual(302, rv.status_code)
 
-        one_unit = model.g.get_from_eid(eid)
+        one_unit = g.get_from_eid(eid)
         self.assertEqual(one_unit.P.name, data['name'])
         self.assertEqual(one_unit.P.label, data['label'])
         self.assertEqual(one_unit.P.format, data['format'])
@@ -154,24 +154,24 @@ class Test_Unit(unittest.TestCase):
 
     def test_units_edit__different_label(self):
         label = 'testestest %s' % time.time()
-        one_unit = model.g.Unit.create(label=label, name='111', format='222', note='333')
+        one_unit = g.Unit.create(label=label, name='111', format='222', note='333')
         different_label = 'tasdfasdfasdf %s' % time.time()
         self._test_unit(different_label, one_unit.eid)
 
 
     def test_units_edit__same_label(self):
         label = 'testestest %s' % time.time()
-        one_unit = model.g.Unit.create(label=label, name='111', format='222', note='333')
+        one_unit = g.Unit.create(label=label, name='111', format='222', note='333')
         self._test_unit(label, one_unit.eid)
 
 
 
     def test_units_edit__duplicate_label(self):
         other_label = 'other testestest %s' % time.time()
-        other_unit = model.g.Unit.create(label=other_label, name='111', format='222', note='333')
+        other_unit = g.Unit.create(label=other_label, name='111', format='222', note='333')
 
         one_label = 'one testestest %s' % time.time()
-        one_unit = model.g.Unit.create(label=one_label, name='111', format='222', note='333')
+        one_unit = g.Unit.create(label=one_label, name='111', format='222', note='333')
 
         data = {
             'action': 'edit',
