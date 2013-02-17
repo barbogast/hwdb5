@@ -459,7 +459,7 @@ def details():
 
     data_type = request.args['type']
     eid = request.args['eid']
-    element = g.vertices.get(eid)
+    element = g.get_from_eid(eid)._bulbs_node
 
     breadcrumb = _render_breadcrumb(element)
     attributes = _render_attributes(element)

@@ -64,6 +64,11 @@ class Test_UI(unittest.TestCase):
         rv = self.app.get('/schema/attr_types')
         self.assertIn('Attribute Types', rv.data)
 
+    def test_details(self):
+        part = model.g.Part.get_one(label='Intel Pentium 4 2.80GHz 15.2.9')
+        rv = self.app.get('/details?eid=%s&type=part' % part.eid)
+        self.assertIn('Intel Pentium 4 2.80GHz 15.2.9', rv.data)
+
 
 
 class Test_Unit(unittest.TestCase):
