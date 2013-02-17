@@ -17,7 +17,7 @@ import model
 import db
 
 
-def start_test_server(args):
+def start_memory_db(args):
     if not jpype:
         print 'Error: JPype could not be imported, test server can not be startet'
         return
@@ -43,9 +43,12 @@ def start_test_server(args):
 
     ImpermanentGraphDatabase = getattr(jpype.JPackage('org.neo4j.test'), 'ImpermanentGraphDatabase')
     WrappingNeoServerBootstrapper = getattr(jpype.JPackage('org.neo4j.server'), 'WrappingNeoServerBootstrapper')
+    ServerConfigurator = getattr(jpype.JPackage('org.neo4j.server.configuration'), 'ServerConfigurator')
 
     db = ImpermanentGraphDatabase()
-    server = WrappingNeoServerBootstrapper(db)
+    config = ServerConfigurator(db)
+    config.configuration().setProperty(ServerConfigurator.WEBSERVER_PORT_PROPERTY_KEY, 7475)
+    server = WrappingNeoServerBootstrapper(db, config)
     server.start()
 
     while True:
@@ -85,7 +88,7 @@ def reset_db(args):
 
 
 COMMANDS = {
-    'test_server': start_test_server,
+    'memory_db': start_memory_db,
     'ui': start_ui,
     'export_xml': export_xml,
     'reset_db': reset_db,

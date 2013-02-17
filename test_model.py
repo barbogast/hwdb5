@@ -30,7 +30,7 @@ def init_test_graph(engine='neo4j'):
         url = 'http://localhost:8182/graphs/hwdbgraph'
     elif engine == 'neo4j':
         from bulbs.neo4jserver import Graph as BulbsGraph, Config
-        url = 'http://localhost:7474/db/data/'
+        url = 'http://localhost:7475/db/data/'
     else:
         raise Exception('Unknown engine %s' % engine)
 
