@@ -1,6 +1,7 @@
 *.pyc
 *.db
 *.bak
+*.log
 
 # Trial
 _trial_temp
