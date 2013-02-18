@@ -256,7 +256,6 @@ def _get_connections_json(eid):
     else:
         root = g.ConnectionRoot.get_one()
         for part in root._bulbs_node.inV('HasConnection') or []:
-            connected_parts = []
             l.append({'title': part.label,
                       'key': part.eid,
                       'children': _get_connections_for_part(part, part),
