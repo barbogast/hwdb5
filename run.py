@@ -4,6 +4,7 @@ import argparse
 import time
 import glob
 import os
+import subprocess
 
 try:
     import jpype
@@ -56,6 +57,16 @@ def start_memory_db(args):
         time.sleep(1000)
 
 
+def start_neo4j(args):
+    path = os.path.join(args.neo4j_path, 'bin', 'neo4j')
+    subprocess.call([path, 'start'])
+
+
+def stop_neo4j(args):
+    path = os.path.join(args.neo4j_path, 'bin', 'neo4j')
+    subprocess.call([path, 'stop'])
+
+
 def export_xml(args):
     outf = open('export.graphml', 'w')
     outf.write(g.get_graphml())
@@ -92,6 +103,8 @@ COMMANDS = {
     'ui': start_ui,
     'export_xml': export_xml,
     'reset_db': reset_db,
+    'neo4jstart': start_neo4j,
+    'neo4jstop': stop_neo4j,
 }
 
 
