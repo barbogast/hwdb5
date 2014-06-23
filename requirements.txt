@@ -1,6 +1,10 @@
+--allow-all-external
 Flask
 Flask-DebugToolbar
-Flask-HTMLBuilder
+
+#Flask-HTMLBuilder
+git+git://github.com/majorz/flask-htmlbuilder.git
+
 Jinja2
 PyYAML
 Werkzeug
@@ -20,4 +24,4 @@ pytz
 six
 wsgiref
 
-#JPipy: not available for installation with pip. Please install with the package manager of your OS.
+JPipe1
